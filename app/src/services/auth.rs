@@ -34,6 +34,6 @@ pub async fn authenticate_user(username: String, password: String) -> AuthResult
 pub async fn register_user(username: String, password: String) -> RegisterResult {
     let hash = hash_password(password);
 
-    info(format!("Registered user {}", username)).await;
+    info(format!("Registered user {}", username).as_str()).await;
     RegisterResult::Ok
 }

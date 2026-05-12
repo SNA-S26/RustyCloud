@@ -27,9 +27,9 @@ async fn get_files(username: String) -> Vec<FileMeta> {
 }
 
 async fn write_file(username: String, filename: String) {
-    info(format!("Writing file {} for user {}", filename, username));
+    info(format!("Writing file {} for user {}", filename, username).as_str()).await;
 }
 
 async fn delete_file(username: String, filename: String) {
-    format!("Deleting file {} for user {}", filename, username)
+    info(format!("Deleting file {} for user {}", filename, username).as_str()).await;
 }
