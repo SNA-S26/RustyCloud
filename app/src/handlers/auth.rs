@@ -53,7 +53,7 @@ pub async fn handle_login(
     let result = authenticate_user(form.username, form.password).await;
 
     match result {
-        AuthResult::Ok => (jar, Html("Success").into_response()),
+        AuthResult::Ok => (jar, Redirect::to("/dashboard").into_response()),
 
         AuthResult::InvalidCredentials => {
             // Set the cookie and redirect
@@ -89,7 +89,7 @@ pub async fn handle_signup(
     let result = register_user(form.username, form.password).await;
 
     match result {
-        RegisterResult::Ok => (jar, Html("Success").into_response()),
+        RegisterResult::Ok => (jar, Redirect::to("/dashboard").into_response()),
 
         RegisterResult::UserExists => {
             // Set the cookie and redirect

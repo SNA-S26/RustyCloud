@@ -6,7 +6,10 @@ use axum::{
     Router,
     routing::{get, post},
 };
-use handlers::auth::{handle_login, handle_signup, serve_index, serve_signup};
+use handlers::{
+    auth::{handle_login, handle_signup, serve_index, serve_signup},
+    dashboard::serve_dashboard,
+};
 use std::{env, net::SocketAddr};
 use tokio::net::TcpListener;
 
@@ -23,7 +26,8 @@ async fn main() {
         .route("/", get(serve_index))
         .route("/login", post(handle_login))
         .route("/signup", get(serve_signup))
-        .route("/signup", post(handle_signup));
+        .route("/signup", post(handle_signup))
+        .route("/dashboard", get(serve_dashboard));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = TcpListener::bind(addr).await.unwrap();

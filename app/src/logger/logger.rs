@@ -1,9 +1,9 @@
 use chrono::Utc;
-use tokio::io::{AsyncWriteExt, stdout, stderr};
+use tokio::io::{AsyncWriteExt, stderr, stdout};
 
 enum JsonLogStream {
     Stdout,
-    Stderr
+    Stderr,
 }
 
 async fn json_log(msg: &str, level: &str, log_stream: JsonLogStream) {
@@ -14,7 +14,7 @@ async fn json_log(msg: &str, level: &str, log_stream: JsonLogStream) {
         "{{\"timestamp\": \"{}\", \"level\": \"{}\", \"message\": \"{}\"}}\n",
         timestamp, level, msg
     );
-    
+
     match log_stream {
         JsonLogStream::Stdout => {
             let _ = stdout().write_all(log.as_bytes()).await;
