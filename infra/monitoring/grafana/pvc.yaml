@@ -1,0 +1,14 @@
+# Grafana PVC
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc # PVC name
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce # only one pod can mount PVC
+  storageClassName: local-path # provisioner(storage provider)
+  resources:
+    requests:
+      storage: 2Gi # minimal required storage space on disk

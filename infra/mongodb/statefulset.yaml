@@ -1,0 +1,61 @@
+# Mongo main pod(statefulset)
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongodb # pod name
+  namespace: database
+spec:
+  serviceName: mongodb-service # service name
+  replicas: 1 # number of replicas(1 = single server(no replicas))
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb # container name
+        image: mongo:7.0 # container image
+        ports:
+        - containerPort: 27017 # container(application) port
+        resources:
+          requests: # at least
+            memory: 256Mi # 256 MB RAM
+            cpu: 100m # 0.1 CPU
+          limits: # at most
+            memory: 1Gi # 1 GB RAM
+            cpu: 500m # 0.5 CPU
+        env: # environment variables(credentials)
+        - name: MONGO_INITDB_ROOT_USERNAME # username
+          valueFrom: # pull username from secret.yaml
+            secretKeyRef:
+              name: mongo-creds
+              key: username # request key for username
+        - name: MONGO_INITDB_ROOT_PASSWORD # password
+          valueFrom: # pull password from secret.yaml
+            secretKeyRef:
+              name: mongo-creds
+              key: password # request key for password
+
+        volumeMounts: # mount PVC
+        - name: user-metadata-db # PVC name
+          mountPath: /data/db # mount directory
+        - name: mongo-init-script # config map name(script name)
+          mountPath: /docker-entrypoint-initdb.d # mount directory
+      volumes:
+        - name: mongo-init-script # volume name
+          configMap:
+            name: mongo-init-script # config map name
+  volumeClaimTemplates: # create PVC(separate PVC for each replica)
+  - metadata:
+      name: user-metadata-db # PVC name
+    spec:
+      accessModes: ["ReadWriteOnce"] # only one pod can mount PVC
+      resources:
+        requests:
+          storage: 2Gi # minimal required storage space on disk
+      storageClassName: local-path # provisioner(storage provider)
+        

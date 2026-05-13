@@ -1,0 +1,14 @@
+# Prometheus service to access statefulset
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-service # service name
+  namespace: monitoring
+spec:
+  type: ClusterIP # service is accessible only within cluster
+  selector:
+    app: prometheus
+  ports:
+    - port: 9090 # service port
+      targetPort: 9090 # application port

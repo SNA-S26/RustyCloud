@@ -1,0 +1,56 @@
+# Prometheus main pod(statefulset)
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: prometheus-statefulset # pod name
+  labels:
+    app: prometheus
+  namespace: monitoring
+spec:
+  serviceName: prometheus-service # Prometheus service name
+  replicas: 1 # number of replicas(1 = single server(no replicas))
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      serviceAccountName: prometheus-sa # Prometheus service account name
+      containers:
+        - name: prometheus # container name
+          image: prom/prometheus:v2.52.0 # container image
+          args: # arguments
+            - "--storage.tsdb.retention.time=12h" # TTL for metrics
+            - "--config.file=/etc/prometheus/prometheus.yml" # config file path
+            - "--storage.tsdb.path=/prometheus" # storage path
+          ports:
+            - containerPort: 9090 # container(application) port
+          resources:
+            requests: # minimal hardware requirements
+              cpu: 500m # 0.5 CPU
+              memory: 512Mi # 512 MB RAM
+            limits: # maximal hardware usage(limits)
+              cpu: 1 # 1 CPU
+              memory: 1Gi # 1 GB RAM
+              
+          volumeMounts: # mount PVC
+            - name: prometheus-conf # config name
+              mountPath: /etc/prometheus/ # mount directory
+            - name: prometheus-storage # PVC name
+              mountPath: /prometheus/ # mount directory
+      volumes:
+        - name: prometheus-conf # volume name
+          configMap:
+            name: prometheus-conf # config map to be mounted
+  volumeClaimTemplates:
+  - metadata:
+      name: prometheus-storage # PVC name
+    spec:
+      accessModes: ["ReadWriteOnce"] # only one pod can mount PVC
+      resources:
+        requests:
+          storage: 5Gi # minimal required storage space on disk
+      storageClassName: local-path # provisioner(storage provider)

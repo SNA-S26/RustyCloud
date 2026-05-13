@@ -1,0 +1,14 @@
+# Mongo service to access statefulset
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb-service # used by statefulset
+  namespace: database
+spec:
+  clusterIP: None # headless service to allow pod access by name
+  selector:
+    app: mongodb
+  ports:
+  - port: 27017 # service port
+    targetPort: 27017 # application port
