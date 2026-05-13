@@ -1,12 +1,5 @@
-use crate::logger::logger::{error, info};
-use serde::Serialize;
-
-#[derive(Serialize)]
-pub struct FileMeta {
-    name: String,
-    size: u64,
-    created_at: u64,
-}
+use crate::logger::logger::{info};
+use crate::storage::models::FileMeta;
 
 pub async fn get_files(username: String) -> Vec<FileMeta> {
     vec![

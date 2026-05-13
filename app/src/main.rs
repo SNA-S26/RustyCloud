@@ -1,7 +1,16 @@
 mod handlers;
 mod logger;
 mod services;
+mod storage;
 
+use crate::{
+    handlers::{
+        auth::handle_logout,
+        dashboard::{delete_file, upload_file},
+    },
+    logger::logger::error,
+    storage::database::init_connections,
+};
 use axum::{
     Router,
     routing::{get, post},
@@ -13,11 +22,6 @@ use handlers::{
 use std::{env, net::SocketAddr};
 use tokio::net::TcpListener;
 
-use crate::handlers::{
-    auth::handle_logout,
-    dashboard::{delete_file, upload_file},
-};
-
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = env::args().collect();
@@ -26,6 +30,11 @@ async fn main() {
         .unwrap_or(&"80".to_string())
         .parse()
         .expect("Invalid port");
+
+    if let Err(e) = init_connections().await {
+        error(e.as_str()).await;
+        std::process::exit(1);
+    }
 
     let app = Router::new()
         .route("/", get(serve_index))
