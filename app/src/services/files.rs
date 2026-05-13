@@ -28,10 +28,10 @@ pub async fn get_files(username: String) -> Vec<FileMeta> {
     ]
 }
 
-pub async fn write_file(username: String, filename: String) {
+pub async fn write_file(username: String, filename: String, data: impl AsRef<[u8]>) {
     info(format!("Writing file {} for user {}", filename, username).as_str()).await;
 }
 
-pub async fn delete_file(username: String, filename: String) {
-    info(format!("Deleting file {} for user {}", filename, username).as_str()).await;
+pub async fn remove_file(username: String, filename: String) {
+    info(format!("Removing file {} for user {}", filename, username).as_str()).await;
 }

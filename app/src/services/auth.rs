@@ -1,4 +1,4 @@
-use crate::logger::logger::{error, info};
+use crate::logger::logger::{error, info, warning};
 
 pub enum AuthResult {
     Ok,
@@ -27,8 +27,8 @@ fn hash_password(password: String) -> String {
 pub async fn authenticate_user(username: String, password: String) -> AuthResult {
     let hash = hash_password(password);
 
-    error("Stub error log").await;
-    AuthResult::InternalError
+    info(format!("Authenticated user {}", username).as_str()).await;
+    AuthResult::Ok
 }
 
 pub async fn register_user(username: String, password: String) -> RegisterResult {

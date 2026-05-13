@@ -13,6 +13,11 @@ use handlers::{
 use std::{env, net::SocketAddr};
 use tokio::net::TcpListener;
 
+use crate::handlers::{
+    auth::handle_logout,
+    dashboard::{delete_file, upload_file},
+};
+
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = env::args().collect();
@@ -27,7 +32,10 @@ async fn main() {
         .route("/login", post(handle_login))
         .route("/signup", get(serve_signup))
         .route("/signup", post(handle_signup))
-        .route("/dashboard", get(serve_dashboard));
+        .route("/logout", post(handle_logout))
+        .route("/dashboard", get(serve_dashboard))
+        .route("/upload-file", post(upload_file))
+        .route("/delete_file", post(delete_file));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = TcpListener::bind(addr).await.unwrap();

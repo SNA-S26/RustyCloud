@@ -1,4 +1,8 @@
 use super::helpers::{extract_cookie, render_error};
+use crate::{
+    handlers::helpers::{add_credentials, extract_credentials, remove_cookie, remove_credentials},
+    services::auth::{AuthResult, RegisterResult, authenticate_user, register_user},
+};
 use axum::{
     Form,
     response::{Html, IntoResponse, Redirect},
@@ -6,28 +10,46 @@ use axum::{
 use axum_extra::extract::cookie::{Cookie, CookieJar};
 use serde::{Deserialize, Serialize};
 
-use crate::services::auth::{AuthResult, RegisterResult, authenticate_user, register_user};
-
 /*
  * Handles GET /
  *
  * Sends index.html template for rendering login error,
  * returns the result HTML and cookies
  */
-pub async fn serve_index(jar: CookieJar) -> (CookieJar, Html<String>) {
-    let (jar, value) = extract_cookie(jar, "login_error");
-    (jar, render_error("index.html", value).await)
+pub async fn serve_index(jar: CookieJar) -> (CookieJar, impl IntoResponse) {
+    let (Some(_), Some(_)) = extract_credentials(jar.clone()) else {
+        let description = extract_cookie(jar.clone(), "login_error");
+        let jar = remove_cookie(jar, "login_error");
+        return (
+            jar,
+            render_error("index.html", description)
+                .await
+                .into_response(),
+        );
+    };
+
+    (jar, Redirect::to("/dashboard").into_response())
 }
 
 /*
  * Handles GET /signup
  *
- * Sends index.html for rendering signup error,
+ * Sends signup.html for rendering signup error,
  * returns the result HTML and cookies
  */
-pub async fn serve_signup(jar: CookieJar) -> (CookieJar, Html<String>) {
-    let (jar, value) = extract_cookie(jar, "signup_error");
-    (jar, render_error("signup.html", value).await)
+pub async fn serve_signup(jar: CookieJar) -> (CookieJar, impl IntoResponse) {
+    let (Some(_), Some(_)) = extract_credentials(jar.clone()) else {
+        let description = extract_cookie(jar.clone(), "signup_error");
+        let jar = remove_cookie(jar, "signup_error");
+        return (
+            jar,
+            render_error("signup.html", description)
+                .await
+                .into_response(),
+        );
+    };
+
+    (jar, Redirect::to("/dashboard").into_response())
 }
 
 // Represents authentication request
@@ -50,10 +72,13 @@ pub async fn handle_login(
     jar: CookieJar,
     Form(form): Form<AuthRequest>,
 ) -> (CookieJar, impl IntoResponse) {
-    let result = authenticate_user(form.username, form.password).await;
+    let result = authenticate_user(form.username.clone(), form.password.clone()).await;
 
     match result {
-        AuthResult::Ok => (jar, Redirect::to("/dashboard").into_response()),
+        AuthResult::Ok => {
+            let jar = add_credentials(jar, form.username, form.password);
+            (jar, Redirect::to("/dashboard").into_response())
+        }
 
         AuthResult::InvalidCredentials => {
             // Set the cookie and redirect
@@ -86,10 +111,13 @@ pub async fn handle_signup(
     jar: CookieJar,
     Form(form): Form<AuthRequest>,
 ) -> (CookieJar, impl IntoResponse) {
-    let result = register_user(form.username, form.password).await;
+    let result = register_user(form.username.clone(), form.password.clone()).await;
 
     match result {
-        RegisterResult::Ok => (jar, Redirect::to("/dashboard").into_response()),
+        RegisterResult::Ok => {
+            let jar = add_credentials(jar, form.username, form.password);
+            (jar, Redirect::to("/dashboard").into_response())
+        }
 
         RegisterResult::UserExists => {
             // Set the cookie and redirect
@@ -108,4 +136,11 @@ pub async fn handle_signup(
             (jar.add(cookie), Redirect::to("/signup").into_response())
         }
     }
+}
+
+/*
+ * Handles POST /logout
+ */
+pub async fn handle_logout(jar: CookieJar) -> (CookieJar, impl IntoResponse) {
+    (remove_credentials(jar), Redirect::to("/").into_response())
 }
