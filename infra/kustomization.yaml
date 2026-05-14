@@ -1,0 +1,29 @@
+# Run all YAML files
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+- namespaces/database.yaml
+- namespaces/monitoring.yaml
+- mongodb/configmap.yaml
+- mongodb/secret.yaml
+- mongodb/statefulset.yaml
+- mongodb/service.yaml
+- redis/deployment.yaml
+- redis/service.yaml
+- monitoring/prometheus/serviceaccount.yaml
+- monitoring/prometheus/configmap.yaml
+- monitoring/prometheus/statefulset.yaml
+- monitoring/prometheus/service.yaml
+- monitoring/prometheus/rbac.yaml
+- monitoring/grafana/configmap-datasource.yaml
+- monitoring/grafana/configmap-dashboards.yaml
+- monitoring/grafana/configmap-dashboard-provider.yaml
+- monitoring/grafana/pvc.yaml
+- monitoring/grafana/deployment.yaml
+- monitoring/grafana/service.yaml
+
+commonLabels:
+  app: rustycloud
+  environment: development

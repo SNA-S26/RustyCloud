@@ -1,0 +1,25 @@
+# Config map with init-script for "users" database in MongoDB
+
+# Insert example:
+# db.users.insertOne({
+#         username: "admin",
+#         password_hash: "hashed_password_here",
+#         files: [
+#             {
+#                 filename: "image.png",
+#                 size: 1024,
+#                 created_at: Date.now()
+#             }
+#         ]
+#     });
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-init-script # config name
+  namespace: database
+data:
+  init.js: |
+    db = db.getSiblingDB("appdb"); // create database
+    db.createCollection("users"); // create collection for users
+    db.users.createIndex({ username: 1 }, { unique: true }); // create index for faster scan

@@ -1,0 +1,35 @@
+# Role-Based Access Control(RBAC) defines what Kubernetes resources Prometheus can access
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-role
+rules: # permission list
+- apiGroups: [""] # basic resources
+  resources: # basic resources 
+  - nodes # monitor nodes(physical devices, e.g. CPU, RAM)
+  - services # service discovery
+  - endpoints # endpoints for target discovery
+  - pods # monitor pods(containers)
+  verbs: ["get", "list", "watch"] # collect metrics, observe changes in real time
+
+- apiGroups: ["networking.k8s.io"] # network resources
+  resources:
+  - ingresses # define HTTP/HTTPS routing rules from outside cluster
+  verbs: ["get", "list", "watch"] # collect metrics, observe changes in real time
+--- # separate two YAML documents
+
+# Bind Prometheus to ClusterRole
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-binding # binding name
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-role # role name
+subjects:
+- kind: ServiceAccount
+  name: prometheus-sa # Prometheus service account name
+  namespace: monitoring
