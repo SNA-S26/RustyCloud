@@ -1,15 +1,15 @@
 ## RustyCloud
 
 ### Usage
-- Install [Rust](https://doc.rust-lang.org/book/ch01-01-installation.html).
+- Install [Mongo](https://www.mongodb.com/docs/manual/installation/), [Redis](https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/), and [Rust](https://doc.rust-lang.org/book/ch01-01-installation.html).
 - Run the application with `cargo`:
 
     ```bash
-    cargo run -- <port>
+    MONGODB_URI=<mongo uri> REDIS_URI=<redis uri> cargo run -- <port>
     ```
 
 ### Running in Docker
-- Install [Docker](https://docs.docker.com/engine/install/).
+- Install [Mongo](https://www.mongodb.com/docs/manual/installation/) and [Redis](https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/), and [Docker](https://docs.docker.com/engine/install/).
 - Build Docker image:
 
     ```bash
@@ -18,5 +18,7 @@
 - Run the container:
 
     ```bash
-    docker run --name rustycloud -p <port>:80 -d rustycloud
+    docker run --name rustycloud \
+    -e MONGODB_URI=<mongo uri> -e REDIS_URI=<redis uri> \
+    -p <port>:80 -d rustycloud
     ```

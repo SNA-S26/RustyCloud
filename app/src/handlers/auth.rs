@@ -125,7 +125,7 @@ pub async fn handle_signup(
                 .path("/")
                 .build();
 
-            (jar.add(cookie), Redirect::to("/").into_response())
+            (jar.add(cookie), Redirect::to("/signup").into_response())
         }
 
         RegisterResult::InternalError => {
