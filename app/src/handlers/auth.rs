@@ -121,7 +121,7 @@ pub async fn handle_signup(
 
         RegisterResult::UserExists => {
             // Set the cookie and redirect
-            let cookie = Cookie::build(("login_error", "Username taken"))
+            let cookie = Cookie::build(("signup_error", "Username taken"))
                 .path("/")
                 .build();
 
