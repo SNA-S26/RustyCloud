@@ -45,10 +45,16 @@ pub async fn authenticate_user(username: String, password: String) -> AuthResult
 pub enum RegisterResult {
     Ok,
     UserExists,
+    InvalidUsername,
     InternalError,
 }
 
 pub async fn register_user(username: String, password: String) -> RegisterResult {
+    // Check for possible path traversals
+    if username.contains('/') || username.contains('\\') {
+        return RegisterResult::InvalidUsername;
+    }
+
     let hash = hash_password(password);
     match try_register_user(username.clone(), hash).await {
         Ok(registered) => {

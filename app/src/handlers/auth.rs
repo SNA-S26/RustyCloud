@@ -119,6 +119,14 @@ pub async fn handle_signup(
             (jar, Redirect::to("/dashboard").into_response())
         }
 
+        RegisterResult::InvalidUsername => {
+            let cookie = Cookie::build(("signup_error", "Username should not contain /"))
+                .path("/")
+                .build();
+
+            (jar.add(cookie), Redirect::to("/signup").into_response())
+        }
+
         RegisterResult::UserExists => {
             // Set the cookie and redirect
             let cookie = Cookie::build(("signup_error", "Username taken"))
