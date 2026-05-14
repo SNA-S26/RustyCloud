@@ -1,5 +1,5 @@
 use mongodb::{Client as MongoClient, Database};
-use redis::{Client as RedisClient};
+use redis::Client as RedisClient;
 use std::{env, result::Result, sync::OnceLock};
 
 pub static MONGO_DB: OnceLock<Database> = OnceLock::new();

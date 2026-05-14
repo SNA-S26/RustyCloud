@@ -39,7 +39,6 @@
             margin-bottom: 35px;
         }
 
-        /* Новый контейнер для кнопок управления в шапке */
         .top-actions {
             display: flex;
             gap: 12px;
@@ -89,7 +88,6 @@
             transform: translateY(-2px);
         }
 
-        /* Стиль для новой кнопки Exit */
         .exit-button {
             height: 40px;
             padding: 0 20px;
@@ -151,19 +149,42 @@
         .file-actions {
             display: flex;
             align-items: center;
-            gap: 24px;
+            gap: 16px;
         }
 
         .file-date {
             font-size: 13px;
             color: #b5aba2;
             white-space: nowrap;
+            margin-right: 8px;
+        }
+
+        .download-link {
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            height: 38px;
+            padding: 0 16px;
+            background: coral;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition-duration: 300ms;
+        }
+
+        .download-link:hover {
+            background: rgb(230, 115, 72);
         }
 
         .delete-button {
             border: none;
             border-radius: 10px;
-            padding: 10px 16px;
+            height: 38px;
+            padding: 0 16px;
             background: rgba(255, 127, 80, 0.12);
             color: coral;
             font-size: 14px;
@@ -199,7 +220,6 @@
                     <div class="subtitle">{{username}}</div>
                 </div>
 
-                <!-- Контейнер объединяет Upload и Exit в одну линию -->
                 <div class="top-actions">
                     <form id="upload-form" action="/upload-file" method="post" enctype="multipart/form-data">
                         <label for="file-upload" class="upload-button">Upload</label>
@@ -230,6 +250,8 @@
                             <div class="file-date">
                                 {{ file.created_at }}
                             </div>
+
+                            <a href="/file?filename={{ file.name }}" class="download-link" download>Download</a>
 
                             <form action="/delete-file" method="post">
                                 <input type="hidden" name="filename" value="{{ file.name }}">

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct FileMeta {
     pub name: String,
     pub size: u64,
-    pub created_at: u64,
+    pub created_at: String,
 }
 
 #[derive(Serialize, Deserialize)]

@@ -1,7 +1,11 @@
-use mongodb::{bson::doc};
-use redis::{AsyncCommands};
-use std::{result::Result};
-use crate::{logger::logger::error, storage::models::User, storage::database::{get_db, get_redis}};
+use crate::{
+    logger::logger::error,
+    storage::database::{get_db, get_redis},
+    storage::models::User,
+};
+use mongodb::bson::doc;
+use redis::AsyncCommands;
+use std::result::Result;
 
 pub async fn is_valid_authenticity(
     username: String,
@@ -61,10 +65,7 @@ pub async fn is_valid_authenticity(
     Ok(user.password_hash == password_hash)
 }
 
-pub async fn try_register_user(
-    username: String,
-    password_hash: String,
-) -> Result<bool, String> {
+pub async fn try_register_user(username: String, password_hash: String) -> Result<bool, String> {
     let users = get_db().collection::<User>("users");
 
     // Check if the user already exists
@@ -83,7 +84,7 @@ pub async fn try_register_user(
     let user = User {
         username: username,
         password_hash: password_hash,
-        files: Vec::new()
+        files: Vec::new(),
     };
 
     users.insert_one(user).await.map_err(|e| e.to_string())?;

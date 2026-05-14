@@ -6,7 +6,7 @@ mod storage;
 use crate::{
     handlers::{
         auth::handle_logout,
-        dashboard::{delete_file, upload_file},
+        dashboard::{delete_file, get_file, upload_file},
     },
     logger::logger::error,
     storage::database::init_connections,
@@ -44,7 +44,8 @@ async fn main() {
         .route("/logout", post(handle_logout))
         .route("/dashboard", get(serve_dashboard))
         .route("/upload-file", post(upload_file))
-        .route("/delete_file", post(delete_file));
+        .route("/delete-file", post(delete_file))
+        .route("/file", get(get_file));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = TcpListener::bind(addr).await.unwrap();

@@ -27,7 +27,6 @@ pub async fn authenticate_user(username: String, password: String) -> AuthResult
     match is_valid_authenticity(username.clone(), hash).await {
         Ok(valid) => {
             if valid {
-                info(format!("Authenticated user {}", username).as_str()).await;
                 AuthResult::Ok
             } else {
                 warning(format!("Invalid authentication attempt for user {}", username).as_str())
