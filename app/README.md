@@ -5,7 +5,7 @@
 - Run the application with `cargo`:
 
     ```bash
-    MONGODB_URI=<mongo uri> REDIS_URI=<redis uri> cargo run -- <port>
+    MONGODB_URI=<mongo uri> REDIS_URI=<redis uri> NFS_MOUNT_POINT=<dir> cargo run -- <port>
     ```
 
 ### Running in Docker
@@ -19,6 +19,8 @@
 
     ```bash
     docker run --name rustycloud \
-    -e MONGODB_URI=<mongo uri> -e REDIS_URI=<redis uri> \
+    -e MONGODB_URI=<mongo uri> \
+    -e REDIS_URI=<redis uri> \
+    -e NFS_MOUNT_POINT=<dir> \
     -p <port>:80 -d rustycloud
     ```
