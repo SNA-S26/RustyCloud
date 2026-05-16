@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
       - name: rustycloud
-        image: rustycloud:latest
-        imagePullPolicy: Never
+        image: docker.io/semyonnadutkin/rustycloud:latest
+        imagePullPolicy: Always
 
         ports:
         - containerPort: 80
