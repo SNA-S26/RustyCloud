@@ -31,10 +31,10 @@ spec:
           resources:
             requests: # minimal hardware requirements
               cpu: 500m # 0.5 CPU
-              memory: 512Mi # 512 MB RAM
+              memory: 512Mi # 512 MiB RAM
             limits: # maximal hardware usage(limits)
               cpu: 1 # 1 CPU
-              memory: 1Gi # 1 GB RAM
+              memory: 512Mi # 512 MiB RAM
               
           volumeMounts: # mount PVC
             - name: prometheus-conf # config name

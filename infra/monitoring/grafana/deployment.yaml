@@ -22,10 +22,10 @@ spec:
           - containerPort: 3000 # container(application) port
         resources:
           limits: # maximal hardware usage(limits)
-            memory: 1Gi # 1 GB RAM
-            cpu: 1000m # 1 CPU
+            memory: 512Mi # 1 MiB RAM
+            cpu: 500m # 1 CPU
           requests: # minimal hardware requirements
-            memory: 512Mi # 512 MB RAM
+            memory: 512Mi # 512 MiB RAM
             cpu: 500m # 0.5 CPU
             
         volumeMounts: # mount PVC and config map
