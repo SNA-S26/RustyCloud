@@ -1,0 +1,52 @@
+# Grafana main pod(deployment)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana # pod name
+  namespace: monitoring
+spec:
+  replicas: 1 # number of replicas(1 = single server(no replicas))
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana # container name
+        image: grafana/grafana:13.0.1 # image name
+        ports:
+          - containerPort: 3000 # container(application) port
+        resources:
+          limits: # maximal hardware usage(limits)
+            memory: 512Mi # 1 MiB RAM
+            cpu: 500m # 1 CPU
+          requests: # minimal hardware requirements
+            memory: 512Mi # 512 MiB RAM
+            cpu: 500m # 0.5 CPU
+            
+        volumeMounts: # mount PVC and config map
+          - mountPath: /var/lib/grafana # mount path
+            name: grafana-storage # PVC name
+          - mountPath: /etc/grafana/provisioning/datasources # mount path
+            name: grafana-datasources # config map name
+          - mountPath: /etc/grafana/provisioning/dashboards # mount path
+            name: grafana-dashboard-provider # config map name
+          - mountPath: /etc/grafana/dashboards # mount path
+            name: grafana-dashboards # config map name
+      volumes:
+        - name: grafana-storage # PVC name
+          persistentVolumeClaim:
+            claimName: grafana-pvc # bind PVC
+        - name: grafana-datasources # volume name
+          configMap:
+            name: grafana-datasources # config map name
+        - name: grafana-dashboard-provider # volume name
+          configMap:
+            name: grafana-dashboard-provider # config map name
+        - name: grafana-dashboards # volume name
+          configMap:
+            name: grafana-dashboards # config map name

@@ -1,0 +1,29 @@
+# Redis main pod(deployment)
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis # pod name
+  namespace: database
+spec:
+  replicas: 1 # number of replicas(1 = single server(no replicas))
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis # container name
+        image: redis:7.2 # container image
+        ports:
+          - containerPort: 6379 # container(application) port
+        resources:
+          requests: # at least
+            memory: 64Mi # 64 MiB RAM
+            cpu: 50m # 0.05 CPU
+          limits: # at most
+            memory: 128Mi # 128 MiB RAM
+            cpu: 250m # 0.25 CPU

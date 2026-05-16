@@ -1,0 +1,19 @@
+# Config file for grafana datasource(Prometheus)
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources # config name
+  namespace: monitoring
+data:
+  prometheus.yaml: |- # insert yaml file directly into config
+    apiVersion: 1
+
+    datasources: # list of datasources for grafana
+      - access: proxy # grafana acts as proxy, pulling metrics from Prometheus and displaying them to user
+        editable: false # datasource cannot be changed via UI Grafana
+        name: prometheus # datasource name
+        orgId: 1 # organization ID
+        type: prometheus # datasource type
+        url: http://prometheus-service:9090 # Prometheus address inside cluster
+        version: 1

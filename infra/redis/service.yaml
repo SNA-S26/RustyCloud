@@ -1,0 +1,13 @@
+# Redis service to access deployment
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service # service name
+  namespace: database
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379 # service port
+      targetPort: 6379 # application port

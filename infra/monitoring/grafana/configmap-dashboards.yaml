@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards # config map name
+  namespace: monitoring
+
+data:
+  k8s-dashboard.json: | # insert json file directly into config map
+    {
+      "editable": true,
+
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Memory Usage",
+          "datasource": "prometheus",
+          "targets": [
+            {
+              "expr": "process_resident_memory_bytes",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "HTTP Requests Traffic",
+          "datasource": "prometheus",
+          "targets": [
+            {
+              "expr": "rate(http_requests_total[1m])",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          }
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "HTTP Errors",
+          "datasource": "prometheus",
+          "targets": [
+            {
+              "expr": "rate(http_requests_total{status=~\"5..\"}[1m])",
+              "refId": "A"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 8
+          }
+        }
+
+      ],
+
+      "schemaVersion": 39,
+      "tags": [
+        "kubernetes",
+        "monitoring"
+      ],
+
+      "time": {
+        "from": "now-15m",
+        "to": "now"
+      },
+
+      "timezone": "browser",
+      "title": "Kubernetes Overview",
+      "version": 1
+    }

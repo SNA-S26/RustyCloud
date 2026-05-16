@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider # config map name
+  namespace: monitoring
+data:
+  dashboards.yaml: | # insert yaml file directly into config map
+    apiVersion: 1
+    providers: # dashboard providers
+      - name: dashboards-provider # provider name
+        orgId: 1 # Organization ID
+        folder: Kubernetes # Grafana UI folder where dashboards are put
+        type: file # dashboards from files
+        disableDeletion: false # delete dashboard if file disappears
+        editable: true # dashboard can be edited via Grafana UI
+        options:
+          path: /etc/grafana/dashboards # search for files(for dashboards) here

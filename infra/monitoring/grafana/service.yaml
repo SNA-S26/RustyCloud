@@ -1,0 +1,14 @@
+# Grafana service to access deployment
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service # service name
+  namespace: monitoring
+spec:
+  type: ClusterIP # service is accessible only within cluster
+  selector:
+    app: grafana
+  ports:
+    - port: 3000 # service port
+      targetPort: 3000 # application port
