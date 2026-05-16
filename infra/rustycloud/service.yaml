@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: rustycloud-service
+
+spec:
+  selector:
+    app: rustycloud
+
+  ports:
+  - port: 80
+    targetPort: 80
+
+  type: ClusterIP

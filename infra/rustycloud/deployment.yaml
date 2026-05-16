@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: rustycloud-deployment
+
+spec:
+  replicas: 3
+
+  selector:
+    matchLabels:
+      app: rustycloud
+
+  template:
+    metadata:
+      labels:
+        app: rustycloud
+
+    spec:
+      containers:
+      - name: rustycloud
+        image: rustycloud:latest
+        imagePullPolicy: Never
+
+        ports:
+        - containerPort: 80
+
+        envFrom:
+        - secretRef:
+            name: rustycloud-secret
+
+        volumeMounts:
+        - name: storage
+          mountPath: ${NFS_MOUNT_POINT}
+
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: rustycloud-pvc
