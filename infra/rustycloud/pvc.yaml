@@ -5,6 +5,10 @@ metadata:
   name: rustycloud-pvc
 
 spec:
+  volumeName: rustycloud-pv
+
+  storageClassName: ""
+
   accessModes:
     - ReadWriteMany
 
