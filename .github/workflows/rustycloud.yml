@@ -35,8 +35,7 @@ jobs:
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
             -e REDIS_URI="redis://127.0.0.1:6379" \
             -e NFS_MOUNT_POINT="/home/dbayazitov/test_storage" \
-            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest \
-            80  
+            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest 80  
           
           echo "Waiting for startup..."
           sleep 10
