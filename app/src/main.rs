@@ -27,7 +27,7 @@ async fn main() {
     let args: Vec<String> = env::args().collect();
     let port: u16 = args
         .get(1)
-        .unwrap_or(&"80".to_string())
+        .unwrap_or(&"8080".to_string())
         .parse()
         .expect("Invalid port");
 

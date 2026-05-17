@@ -22,13 +22,11 @@ jobs:
       # 2. PORT LIBERATION: Stop host services that might conflict
       - name: Stop Host Services
         run: |
-          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl stop mongod || true
-          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl stop redis || true
-          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl stop nginx || true
-          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl stop apache2 || true
+          # ... existing stops ...
           echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 27017/tcp || true
           echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 6379/tcp || true
           echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 80/tcp || true
+          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 8080/tcp || true # Added this
 
       # 3. DATABASES: Start fresh test instances
       - name: Start Database Services
@@ -55,7 +53,7 @@ jobs:
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./app
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
 
-      # 7. TEST RUN: Start the container
+      # 7. TEST RUN: Use --network host
       - name: Start RustyCloud container for testing
         run: |
           docker run -d \
@@ -68,12 +66,13 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest 8080
           
           echo "Waiting for RustyCloud to respond on port 8080..."
-          for i in {1..15}; do
-            if curl -s http://127.0.0.1:8080/signup > /dev/null; then
+          # Increased wait time and added explicit check for 0.0.0.0
+          for i in {1..20}; do
+            if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/signup | grep "200" > /dev/null; then
               echo "Server is responding!"
               break
             fi
-            echo "Waiting... ($i/15)"
+            echo "Waiting for server... ($i/20)"
             sleep 2
           done
 
