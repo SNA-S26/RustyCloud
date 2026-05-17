@@ -26,6 +26,8 @@ jobs:
       # Run the container locally on the runner to test it
       - name: Start container for testing
         run: |
+          docker rm -f test-app || true
+          
           docker run -d --name test-app -p 8080:8080 \
             -e MONGODB_URI="mongodb://localhost:27017" \
             -e REDIS_URI="redis://localhost:6379" \
