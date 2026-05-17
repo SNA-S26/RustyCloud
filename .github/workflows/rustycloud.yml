@@ -36,7 +36,7 @@ jobs:
             -e REDIS_URI="redis://127.0.0.1:6379" \
             -e NFS_MOUNT_POINT="/home/dbayazitov/test_storage" \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest \
-            8080  
+            80  
           
           echo "Waiting for startup..."
           sleep 10
