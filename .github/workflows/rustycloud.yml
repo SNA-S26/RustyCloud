@@ -20,7 +20,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest .
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./app
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
 
       # Run the container locally on the runner to test it
