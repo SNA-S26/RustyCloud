@@ -12,27 +12,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1. CLEANUP: Clear out lingering containers
-      - name: Stop and remove all existing containers
+      # 1. CLEANUP: Clear out containers using the specific port
+      - name: Stop and remove conflicting containers
         run: |
-          docker stop $(docker ps -aq) || true
-          docker rm -f $(docker ps -aq) || true
+          # Find container IDs using port 8080 and remove them
+          CONTAINER_IDS=$(docker ps -q --filter "publish=8080")
+          if [ ! -z "$CONTAINER_IDS" ]; then
+            echo "Stopping containers using 8080: $CONTAINER_IDS"
+            docker stop $CONTAINER_IDS
+            docker rm -f $CONTAINER_IDS
+          fi
+          
+          # Also remove by name if they exist but aren't on that port
+          docker stop rustycloud-test || true
+          docker rm -f rustycloud-test || true
           docker network prune -f
 
-      # 2. PORT LIBERATION: Stop host services that might conflict
+      # 2. PORT LIBERATION: Kill host processes on 8080
       - name: Stop Host Services
         run: |
-          # ... existing stops ...
+          # Kill any non-docker process (like a manual cargo run) using 8080
+          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 8080/tcp || true
           echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 27017/tcp || true
           echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 6379/tcp || true
-          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 80/tcp || true
-          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 8080/tcp || true # Added this
 
-      # 3. DATABASES: Start fresh test instances
+      # 3. DATABASES: Start on a dedicated network
       - name: Start Database Services
         run: |
-          docker run -d --name mongodb-test -p 27017:27017 mongo:latest
-          docker run -d --name redis-test -p 6379:6379 redis:latest
+          docker network create rustycloud-net || true
+          docker run -d --name mongodb-test --network rustycloud-net -p 27017:27017 mongo:latest
+          docker run -d --name redis-test --network rustycloud-net -p 6379:6379 redis:latest
           sleep 10 
 
       # 4. STORAGE PREP: Create the directory for the NFS mount simulation
@@ -53,26 +62,28 @@ jobs:
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./app
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
 
-      # 7. TEST RUN: Use --network host
+      # 7. TEST RUN: Map the port instead of using --network host
       - name: Start RustyCloud container for testing
         run: |
           docker run -d \
             --name rustycloud-test \
-            --network host \
-            -e MONGODB_URI="mongodb://127.0.0.1:27017" \
-            -e REDIS_URI="redis://127.0.0.1:6379" \
+            --network rustycloud-net \
+            -p 8080:8080 \
+            -e MONGODB_URI="mongodb://mongodb-test:27017" \
+            -e REDIS_URI="redis://redis-test:6379" \
             -e NFS_MOUNT_POINT="/app/storage" \
             -v ${{ github.workspace }}/storage:/app/storage:Z \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest 8080
           
-          echo "Waiting for RustyCloud to respond on port 8080..."
-          # Increased wait time and added explicit check for 0.0.0.0
+          echo "Waiting for RustyCloud to respond..."
           for i in {1..20}; do
-            if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/signup | grep "200" > /dev/null; then
-              echo "Server is responding!"
+            # Use -I to just fetch headers and check for 200 OK
+            if curl -s -I http://127.0.0.1:8080/ | grep "200 OK" > /dev/null; then
+              echo "Server is UP!"
               break
             fi
-            echo "Waiting for server... ($i/20)"
+            echo "Server not ready yet... ($i/20)"
+            docker ps -a | grep rustycloud-test # Check if container died
             sleep 2
           done
 
@@ -86,9 +97,12 @@ jobs:
       - name: Debug logs on failure
         if: failure()
         run: |
+          echo "=== CONTAINER STATUS ==="
+          docker ps -a
+          echo "=== CONTAINER LOGS ==="
           docker logs rustycloud-test
-          # Checking internal paths based on your Dockerfile/Tree
-          docker exec rustycloud-test ls -R /app || echo "App directory issue!"
+          echo "=== NETWORK CHECK ==="
+          sudo netstat -tulpn | grep 8080 || echo "Port 8080 is NOT listening!"
 
       # 10. POST-TEST CLEANUP
       - name: Stop testing containers
