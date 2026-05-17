@@ -2,12 +2,12 @@ name: CI/CD Pipeline
 
 on:
   push:
-    # Trigger the workflow only on pushes to the CI/CD-Reliability branch
+    # Trigger the workflow only on the specified branch
     branches: [ "CI/CD-Reliability" ] 
 
 jobs:
   build-and-test:
-    # Using the local machine runner to perform tasks
+    # Using a self-hosted runner to access local resources (Mongo, Redis)
     runs-on: self-hosted 
     
     steps:
@@ -22,18 +22,16 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          # Build the image using the Dockerfile located in the /app directory
+          # Build image from the /app directory and tag it
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./app
-          # Push the newly built image to the Docker Hub repository
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
 
       - name: Start container for testing
         run: |
-          # 1. Clean up old attempts
+          # Ensure a clean environment by removing existing test containers
           docker rm -f test-app || true
 
-          # 2. Run with host network AND verify the binary name
-          # We use 0.0.0.0 or the host IP to ensure it's not looping back to an empty container
+          # Use host networking so the container can access MongoDB/Redis on the runner's localhost
           docker run -d --name test-app \
             --network="host" \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
@@ -41,39 +39,41 @@ jobs:
             -e NFS_MOUNT_POINT="./test_storage" \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
           
-          # 3. Check if the container actually stayed alive
+          # Wait for the application to initialize database connections
           sleep 10
+          
+          # Debugging: check if the container is running and print logs for verification
           docker ps
           docker logs test-app
 
       - name: Run functional tests
         run: |
-          # Ensure Python dependencies are available and execute the test suite
+          # Install dependencies and execute the test suite
           pip install requests pytest
           pytest tests/test_routes.py
 
       - name: Stop testing container
-        if: always() # Ensure cleanup happens even if tests fail
+        if: always() # Ensure cleanup happens even if the tests fail
         run: |
           docker stop test-app || true
           docker rm test-app || true
 
   deploy:
-    # This job only runs if the build and test stages pass successfully
+    # This job only executes if the build-and-test job passes
     needs: build-and-test
     runs-on: self-hosted
     
     steps:
       - name: Deploy to Server via SSH
         run: |
-          # Connect to the remote server using the SERVER_IP secret
+          # Securely connect to the production server using stored secrets
           ssh root@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
             
-            # Navigate to the project directory on the server
+            # Navigate to the project directory
             cd ~/RustyCloud
 
-            # Generate the .env file dynamically from GitHub Secrets
+            # Dynamically create the .env file with current secrets
             cat > .env << EOL
             MONGODB_USER=${{ secrets.MONGODB_USER }}
             MONGODB_PASS=${{ secrets.MONGODB_PASS }}
@@ -81,7 +81,7 @@ jobs:
             NFS_MOUNT_POINT=${{ secrets.NFS_MOUNT_POINT }}
             EOL
 
-            # Set secure file permissions and launch the deployment script
+            # Restrict permissions and execute the deployment script
             chmod 600 .env
             ./deploy.sh
           EOF
