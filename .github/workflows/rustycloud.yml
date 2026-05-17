@@ -26,24 +26,26 @@ jobs:
 
       - name: Start container for testing
         run: |
-          # Remove existing container if it exists
           docker rm -f test-app || true
+          
+          # 1. Create the storage directory and give it full permissions
+          mkdir -p ${{ github.workspace }}/test_storage
+          chmod 777 ${{ github.workspace }}/test_storage
 
+          # 2. Run the container with an ABSOLUTE path
           docker run -d --name test-app \
             --network="host" \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
             -e REDIS_URI="redis://127.0.0.1:6379" \
-            -e NFS_MOUNT_POINT="./test_storage" \
+            -e NFS_MOUNT_POINT="${{ github.workspace }}/test_storage" \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
           
-          # Wait for the app to actually be ready
-          echo "Waiting for app to start..."
-          sleep 15
+          sleep 10
       
       - name: Check App Logs
         if: always()
         run: docker logs test-app
-        
+
       - name: Debug Rust Application Logs
         run: |
           docker logs test-app
