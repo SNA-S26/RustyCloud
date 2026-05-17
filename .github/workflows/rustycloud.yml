@@ -29,10 +29,10 @@ jobs:
 
       - name: Start container for testing
         run: |
-          # Remove any existing test container to avoid port or name conflicts
+          # Clean up any lingering test containers
           docker rm -f test-app || true
 
-          # Run the container using the host network to allow access to local Mongo and Redis
+          # Use --network="host" so the container shares the runner's network
           docker run -d --name test-app \
             --network="host" \
             -e MONGODB_URI="mongodb://localhost:27017" \
@@ -40,7 +40,7 @@ jobs:
             -e NFS_MOUNT_POINT="./test_storage" \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
           
-          # Wait for the Rust server to initialize database connections
+          # Give the Rust server enough time to establish DB connections
           sleep 10
 
       - name: Run functional tests
