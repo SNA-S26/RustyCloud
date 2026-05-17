@@ -12,33 +12,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1. CLEANUP: Stop all containers to prevent naming/port conflicts
+      # 1. CLEANUP: Stop all containers
       - name: Stop and remove all existing containers
         run: |
-          echo "Cleaning up all Docker containers on the runner..."
+          echo "Cleaning up all Docker containers..."
           docker stop $(docker ps -aq) || true
           docker rm -f $(docker ps -aq) || true
+          # This specifically cleans up dangling network endpoints
+          docker network prune -f
 
-      # 2. PORT FIX: Stop native host services to free up ports 27017 and 6379
+      # 2. FORCE PORT LIBERATION: Kill anything on 27017 or 6379
       - name: Stop Host Database Services
         run: |
-          echo "Stopping host-native mongo and redis to free ports..."
+          echo "Force-killing any process on database ports..."
           sudo systemctl stop mongod || true
           sudo systemctl stop redis || true
+          # Kill processes using these ports directly (requires psmisc package)
+          sudo fuser -k 27017/tcp || true
+          sudo fuser -k 6379/tcp || true
 
       # 3. DATABASE: Start isolated Docker containers
       - name: Start Database Services
         run: |
           echo "Starting isolated MongoDB and Redis containers..."
-          docker run -d --name mongodb-test \
-            -p 27017:27017 \
-            mongo:latest
+          # We use --rm so they clean themselves up if they fail
+          docker run -d --name mongodb-test -p 27017:27017 mongo:latest
+          docker run -d --name redis-test -p 6379:6379 redis:latest
           
-          docker run -d --name redis-test \
-            -p 6379:6379 \
-            redis:latest
-          
-          # Allow time for the database engines to initialize
           sleep 10
 
       # 4. AUTH: Login to Docker Hub
