@@ -26,11 +26,10 @@ jobs:
 
       - name: Start container for testing
         run: |
-          # 1. Cleanup: Remove any existing test container
+          # Kill anything on 8080
+          sudo fuser -k 8080/tcp || true
           docker rm -f test-app || true
 
-          # 2. Start container using HOST networking
-          # This allows '127.0.0.1' inside the app to point to the host's Mongo/Redis
           docker run -d --name test-app \
             --network="host" \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
@@ -38,13 +37,11 @@ jobs:
             -e NFS_MOUNT_POINT="./test_storage" \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
           
-          # 3. Wait for the Rust app to finish its internal startup
-          sleep 15
-          
-          # 4. Check if the app is still alive
-          docker ps
-          
-          # 5. VERY IMPORTANT: If it's not working, these logs will tell you why it crashed
+          # Give it more time to boot
+          sleep 20
+
+      - name: Debug Rust Application Logs
+        run: |
           docker logs test-app
 
       - name: Run functional tests
