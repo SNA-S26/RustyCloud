@@ -12,22 +12,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1. CLEANUP: Wipe all containers to prevent port or naming conflicts
+      # 1. CLEANUP: Stop all containers to prevent naming/port conflicts
       - name: Stop and remove all existing containers
         run: |
           echo "Cleaning up all Docker containers on the runner..."
           docker stop $(docker ps -aq) || true
           docker rm -f $(docker ps -aq) || true
 
-      # 2. DATABASE: Start MongoDB in a container to avoid host library Segmentation Faults
+      # 2. PORT FIX: Stop native host services to free up ports 27017 and 6379
+      - name: Stop Host Database Services
+        run: |
+          echo "Stopping host-native mongo and redis to free ports..."
+          sudo systemctl stop mongod || true
+          sudo systemctl stop redis || true
+
+      # 3. DATABASE: Start isolated Docker containers
       - name: Start Database Services
         run: |
-          echo "Starting isolated MongoDB container..."
+          echo "Starting isolated MongoDB and Redis containers..."
           docker run -d --name mongodb-test \
             -p 27017:27017 \
             mongo:latest
           
-          # Start Redis as well to ensure total independence from host services
           docker run -d --name redis-test \
             -p 6379:6379 \
             redis:latest
@@ -35,25 +41,23 @@ jobs:
           # Allow time for the database engines to initialize
           sleep 10
 
-      # 3. AUTH: Login to Docker Hub
-      # Ensure you have run 'docker context use default' on your runner terminal
+      # 4. AUTH: Login to Docker Hub
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 4. BUILD: Create the image from the 'app' directory build context
+      # 5. BUILD: Create image from 'app' directory
       - name: Build and push Docker image
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./app
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
 
-      # 5. TEST RUN: Start the app container
+      # 6. TEST RUN: Start the app container
       - name: Start RustyCloud container for testing
         run: |
-          # Use --network="host" so the app can reach the Mongo/Redis containers via 127.0.0.1
-          # Pass '8080' to the binary to match the pytest configuration
+          # Use --network="host" to reach Mongo/Redis containers on 127.0.0.1
           docker run -d --network="host" \
             --name rustycloud-test \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
@@ -62,17 +66,15 @@ jobs:
             -v /home/dbayazitov/Downloads/sna/project/RustyCloud:/app/storage \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./RustyCloud 8080
           
-          # Wait for the Rust app to establish its connection pools
           sleep 10
 
-      # 6. VERIFICATION: Execute functional Python tests
+      # 7. VERIFICATION: Execute functional Python tests
       - name: Run functional tests
         run: |
           pip install requests pytest
-          # This will target http://127.0.0.1:8080
           pytest tests/test_routes.py
 
-      # 7. DEBUG: Collect information if the run fails
+      # 8. DEBUG: Collect information if the run fails
       - name: Debug logs on failure
         if: failure()
         run: |
@@ -81,7 +83,7 @@ jobs:
           echo "--- MongoDB Container Logs ---"
           docker logs mongodb-test || true
 
-      # 8. POST-TEST CLEANUP: Remove test-specific containers
+      # 9. POST-TEST CLEANUP: Remove test containers
       - name: Stop testing containers
         if: always() 
         run: |
@@ -97,15 +99,11 @@ jobs:
           ssh root@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
             cd ~/RustyCloud
-
-            # Generate the environment file for the production environment
             cat > .env << EOL
             MONGODB_URI=${{ secrets.PROD_MONGODB_URI }}
             REDIS_URI=${{ secrets.PROD_REDIS_URI }}
             NFS_MOUNT_POINT=${{ secrets.NFS_MOUNT_POINT }}
             EOL
-
             chmod 600 .env
-            # deploy.sh uses port 8080 for production consistency
             ./deploy.sh
           EOF
