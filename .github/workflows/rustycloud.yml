@@ -22,9 +22,8 @@ jobs:
       # Fix for unstable mongod: force restart services on the host
       - name: Ensure Host Services are Running
         run: |
-          echo "Restarting databases on host to prevent connection errors..."
-          sudo systemctl restart mongod
-          sudo systemctl restart redis
+          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl restart mongod
+          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl restart redis
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
