@@ -13,4 +13,4 @@ COPY templates ./templates
 COPY --from=builder /app/target/release/RustyCloud ./
 
 EXPOSE 80
-CMD ["./RustyCloud"]
+CMD ["./RustyCloud", "80"]
