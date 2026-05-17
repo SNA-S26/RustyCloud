@@ -13,6 +13,6 @@ COPY --from=builder /app/target/release/RustyCloud ./
 COPY --from=builder /app/templates ./templates
 
 RUN setcap 'cap_net_bind_service=+ep' ./RustyCloud
-EXPOSE 8080
+EXPOSE 80
 ENTRYPOINT ["./RustyCloud"]
-CMD ["8080"]
+CMD ["80"]

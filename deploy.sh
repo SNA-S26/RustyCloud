@@ -11,12 +11,12 @@ docker pull dambaya/rustycloud:latest
 docker stop rustycloud || true
 docker rm rustycloud || true
 
-# 3. Run the new container
-# Update mapping to 8080:8080 to match your successful manual tests
+# 3. Run the new container:
 docker run -d \
   --name rustycloud \
   --env-file .env \
-  -p 8080:8080 \
+  -v /mnt/nfs_share:/app/storage \
+  -p 8080:80 \
   --restart always \
   dambaya/rustycloud:latest
 

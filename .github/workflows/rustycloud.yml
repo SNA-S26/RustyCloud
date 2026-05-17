@@ -12,49 +12,51 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1. CLEANUP: Stop all containers
+      # 1. CLEANUP: Clear out any lingering containers from previous failed runs
       - name: Stop and remove all existing containers
         run: |
           docker stop $(docker ps -aq) || true
           docker rm -f $(docker ps -aq) || true
           docker network prune -f
 
-      # 2. FORCE PORT LIBERATION: Fixes "address already in use"
-      - name: Stop Host Database Services
+      # 2. PORT LIBERATION: Stop host services that might "squat" on required ports
+      # This prevents the "Imposter Server" (like Nginx) from causing 404s on port 80
+      - name: Stop Host Services
         run: |
-          echo "Force-killing any process on database ports..."
-          # Fix: Pipe the password into sudo -S
           echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl stop mongod || true
           echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl stop redis || true
+          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl stop nginx || true
+          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl stop apache2 || true
+          # Force kill any remaining processes on ports 27017, 6379, and 80
           echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 27017/tcp || true
           echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 6379/tcp || true
+          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 80/tcp || true
 
-      # 3. DATABASE: Start isolated Docker containers
+      # 3. DATABASES: Start MongoDB and Redis containers
       - name: Start Database Services
         run: |
           docker run -d --name mongodb-test -p 27017:27017 mongo:latest
           docker run -d --name redis-test -p 6379:6379 redis:latest
-          sleep 10
+          sleep 10 # Give databases time to initialize
 
-      # 4. AUTH & PULL: Login and pre-pull base images to fix "access denied"
+      # 4. STORAGE PREP: Ensure the mount directory exists on the runner
+      - name: Prepare Local Storage
+        run: mkdir -p ${{ github.workspace }}/storage
+
+      # 5. DOCKER AUTH: Login to pull/push images
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Pre-pull base images
-        run: |
-          docker pull rustlang/rust:nightly-slim
-          docker pull debian:bookworm-slim
-
-      # 5. BUILD: Create and push the image
+      # 6. BUILD: Create the image (Assumes Dockerfile is in the root)
       - name: Build and push Docker image
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./app
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
 
-      # 6. TEST RUN: Start the app container
+      # 7. TEST RUN: Use --network host so 127.0.0.1 points to the host's DB ports
       - name: Start RustyCloud container for testing
         run: |
           docker run -d \
@@ -63,12 +65,12 @@ jobs:
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
             -e REDIS_URI="redis://127.0.0.1:6379" \
             -e NFS_MOUNT_POINT="/app/storage" \
-            -v /home/dbayazitov/Downloads/sna/project/RustyCloud:/app/storage:Z \
-            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./RustyCloud 80
+            -v ${{ github.workspace }}/storage:/app/storage:Z \
+            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest 80
           
-          echo "Waiting for RustyCloud to respond on 8080 (mapped to container 80)..."
+          echo "Waiting for RustyCloud to respond on port 80..."
           for i in {1..15}; do
-            if curl -s http://127.0.0.1:8080/signup > /dev/null; then
+            if curl -s http://127.0.0.1:80/signup > /dev/null; then
               echo "Server is responding!"
               break
             fi
@@ -76,23 +78,20 @@ jobs:
             sleep 2
           done
 
-      # 7. VERIFICATION: Execute functional Python tests
+      # 8. VERIFICATION: Run Pytest against the live container
       - name: Run functional tests
         run: |
-          # Ensure dependencies are present
           pip install requests pytest
-          # Target the local instance established in step 6
           pytest tests/test_routes.py
 
-      # 8. DEBUG: If it still 404s, we need to see the internal binary logs
+      # 9. DEBUG: Check logs and internal files if tests fail
       - name: Debug logs on failure
         if: failure()
         run: |
           docker logs rustycloud-test
-          # Check if the templates directory exists inside the running container
           docker exec rustycloud-test ls -R /app/templates || echo "Templates missing!"
 
-      # 9. POST-TEST CLEANUP
+      # 10. POST-TEST CLEANUP: Clean up resources regardless of success/failure
       - name: Stop testing containers
         if: always() 
         run: |
@@ -107,11 +106,13 @@ jobs:
         run: |
           ssh root@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
+            mkdir -p ~/RustyCloud
             cd ~/RustyCloud
+            # Create the production environment file
             cat > .env << EOL
             MONGODB_URI=${{ secrets.PROD_MONGODB_URI }}
             REDIS_URI=${{ secrets.PROD_REDIS_URI }}
-            NFS_MOUNT_POINT=${{ secrets.NFS_MOUNT_POINT }}
+            NFS_MOUNT_POINT="/app/storage"
             EOL
             chmod 600 .env
             ./deploy.sh
