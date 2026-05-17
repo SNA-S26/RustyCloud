@@ -26,8 +26,7 @@ jobs:
 
       - name: Start container for testing
         run: |
-          # Kill anything on 8080
-          sudo fuser -k 8080/tcp || true
+          # Remove existing container if it exists
           docker rm -f test-app || true
 
           docker run -d --name test-app \
@@ -37,9 +36,14 @@ jobs:
             -e NFS_MOUNT_POINT="./test_storage" \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
           
-          # Give it more time to boot
-          sleep 20
-
+          # Wait for the app to actually be ready
+          echo "Waiting for app to start..."
+          sleep 15
+      
+      - name: Check App Logs
+        if: always()
+        run: docker logs test-app
+        
       - name: Debug Rust Application Logs
         run: |
           docker logs test-app
