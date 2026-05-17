@@ -31,7 +31,8 @@ jobs:
           mkdir -p /home/dbayazitov/test_storage
           chmod 777 /home/dbayazitov/test_storage
           
-        
+          # We don't need to specify /usr/local/bin/ or the port '80' here
+          # because the Dockerfile CMD already handles it.
           docker run -d --name test-app \
             --network="host" \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
@@ -39,8 +40,9 @@ jobs:
             -e NFS_MOUNT_POINT="/home/dbayazitov/test_storage" \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
           
+          echo "Waiting 10s for RustyCloud to bind to port 80..."
           sleep 10
-          docker logs test-app # Check logs to see "Listening on 0.0.0.0:80"
+          docker logs test-app
 
       - name: Verify Application Health
         if: always()
