@@ -12,6 +12,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # New Step: Kill and remove ALL containers to ensure a clean state
+      - name: Stop and remove all existing containers
+        run: |
+          echo "Cleaning up all Docker containers on the runner..."
+          docker stop $(docker ps -aq) || true
+          docker rm -f $(docker ps -aq) || true
+
+      # Fix for unstable mongod: force restart services on the host
+      - name: Ensure Host Services are Running
+        run: |
+          echo "Restarting databases on host to prevent connection errors..."
+          sudo systemctl restart mongod
+          sudo systemctl restart redis
+
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -20,76 +34,64 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          # Use the 'app' directory as the context
+          # Build context is the 'app' directory as per Dockerfile 
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./app
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
 
-      - name: Start container
+      - name: Start container for testing
         run: |
-          # 1. Clean up old instances
-          docker rm -f test-app || true
-          
-          # 2. Force kill anything on port 80 (Apache/Nginx)
-          sudo fuser -k 80/tcp || true
-          
-          # 3. Run the container
-          docker run -d --name test-app \
-            --network="host" \
+          # Run container using host network to access MongoDB/Redis on 127.0.0.1
+          # Pass '8080' as an argument to match test_routes.py
+          docker run -d --network="host" \
+            --name rustycloud-test \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
             -e REDIS_URI="redis://127.0.0.1:6379" \
-            -e NFS_MOUNT_POINT="/home/dbayazitov/Downloads/sna/project/RustyCloud" \
-            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
+            -e NFS_MOUNT_POINT="/app/storage" \
+            -v /home/dbayazitov/Downloads/sna/project/RustyCloud:/app/storage \
+            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./RustyCloud 8080
           
-          # 4. Debugging: Wait and check if it stayed alive
-          sleep 5
-          docker ps -a | grep test-app
-          docker logs test-app
-
-      - name: Verify Application Health
-        if: always()
-        run: |
-          echo "--- Container Status ---"
-          docker ps -a
-          echo "--- Application Logs (Startup Check) ---"
-          docker logs test-app
+          # Wait for the application to initialize database connections
+          sleep 10
 
       - name: Run functional tests
         run: |
           # Ensure dependencies are present for the Python test script
           pip install requests pytest
-          # Execute tests against the server listening on port 80
+          # Execute tests against the server listening on port 8080
           pytest tests/test_routes.py
+
+      - name: Debug logs on failure
+        if: failure()
+        run: |
+          echo "--- Application Logs ---"
+          docker logs rustycloud-test
+          echo "--- Database Status ---"
+          systemctl status mongod
 
       - name: Stop testing container
         if: always() 
         run: |
-          docker stop test-app || true
-          docker rm test-app || true
+          docker stop rustycloud-test || true
+          docker rm rustycloud-test || true
 
   deploy:
-    # This job only executes if the build-and-test job passes
     needs: build-and-test
     runs-on: self-hosted
-    
     steps:
       - name: Deploy to Server via SSH
         run: |
-          # Securely connect to the production server using stored secrets
           ssh root@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
-            
-            # Navigate to the project directory
             cd ~/RustyCloud
 
-            # Dynamically create the .env file with current secrets
+            # Create .env with necessary production secrets
             cat > .env << EOL
-            MONGODB_USER=${{ secrets.MONGODB_USER }}
-            MONGODB_PASS=${{ secrets.MONGODB_PASS }}
-            NFS_SERVER=${{ secrets.NFS_SERVER }}
+            MONGODB_URI=${{ secrets.PROD_MONGODB_URI }}
+            REDIS_URI=${{ secrets.PROD_REDIS_URI }}
             NFS_MOUNT_POINT=${{ secrets.NFS_MOUNT_POINT }}
             EOL
 
-            # Restrict permissions and execute the deployment script
             chmod 600 .env
+            # Execute deployment using port 8080 as defined in deploy.sh 
             ./deploy.sh
           EOF

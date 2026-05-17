@@ -12,11 +12,11 @@ docker stop rustycloud || true
 docker rm rustycloud || true
 
 # 3. Run the new container
-# We use variables from the .env file created by the CI/CD pipeline
+# Update mapping to 8080:8080 to match your successful manual tests
 docker run -d \
   --name rustycloud \
   --env-file .env \
-  -p 80:80 \
+  -p 8080:8080 \
   --restart always \
   dambaya/rustycloud:latest
 
