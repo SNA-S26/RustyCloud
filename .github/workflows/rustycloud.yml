@@ -57,24 +57,26 @@ jobs:
       # 6. TEST RUN: Start the app container
       - name: Start RustyCloud container for testing
         run: |
-          # Use host network to reach DB containers and allow pytest to reach the app
-          docker run -d --network="host" \
+          docker run -d \
             --name rustycloud-test \
+            --network="host" \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
             -e REDIS_URI="redis://127.0.0.1:6379" \
             -e NFS_MOUNT_POINT="/app/storage" \
-            -v /home/dbayazitov/Downloads/sna/project/RustyCloud:/app/storage \
-            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./RustyCloud 8080
+            # Added :Z for SELinux and ensured we mount to the correct internal path
+            -v /home/dbayazitov/Downloads/sna/project/RustyCloud:/app/storage:Z \
+            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest \
+            # Explicitly run the binary from /app to match the WORKDIR
+            /app/RustyCloud 8080
           
-          echo "Waiting for RustyCloud to bind to port 8080..."
-          # A loop is safer than a flat 'sleep'
-          for i in {1..10}; do
-            if curl -s http://127.0.0.1:8080/ > /dev/null; then
-              echo "RustyCloud is UP!"
+          echo "Waiting for RustyCloud to respond on 8080..."
+          # The logs show it took 10 attempts to fail last time; let's verify readiness
+          for i in {1..15}; do
+            if curl -s http://127.0.0.1:8080/signup > /dev/null; then
+              echo "Signup route is reachable!"
               break
             fi
-            echo "Still waiting... ($i/10)"
-            sleep 3
+            sleep 2
           done
 
       # 7. VERIFICATION: Execute functional Python tests
@@ -85,15 +87,13 @@ jobs:
           # Target the local instance established in step 6
           pytest tests/test_routes.py
 
-      # 8. DEBUG: Collect information if the run fails
+      # 8. DEBUG: If it still 404s, we need to see the internal binary logs
       - name: Debug logs on failure
         if: failure()
         run: |
-          echo "--- Application Logs ---"
           docker logs rustycloud-test
-          echo "--- Network Status ---"
-          # Check if anything is actually listening on 8080
-          sudo ss -tulpn | grep :8080 || echo "Nothing listening on 8080"
+          # Check if the templates directory exists inside the running container
+          docker exec rustycloud-test ls -R /app/templates || echo "Templates missing!"
 
       # 9. POST-TEST CLEANUP
       - name: Stop testing containers
