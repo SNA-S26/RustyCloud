@@ -116,20 +116,20 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4 # Need this to access deploy.sh
+        uses: actions/checkout@v4
 
-      - name: Copy script and deploy
+      - name: Deploy to Production Server
         run: |
           # 1. Copy the deploy script to the server
-          scp root@${{ secrets.SERVER_IP }}:~/RustyCloud/deploy.sh ./deploy.sh
+          scp ./deploy.sh root@${{ secrets.SERVER_IP }}:~/RustyCloud/deploy.sh
           
-          # 2. Run the remote commands
+          # 2. Run the deployment commands
           ssh root@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
             mkdir -p ~/RustyCloud
             cd ~/RustyCloud
             
-            # Create the env file
+            # Create the env file from secrets
             cat > .env << EOL
             MONGODB_URI=${{ secrets.PROD_MONGODB_URI }}
             REDIS_URI=${{ secrets.PROD_REDIS_URI }}

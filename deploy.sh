@@ -16,7 +16,7 @@ docker run -d \
   --name rustycloud \
   --env-file .env \
   -v /mnt/nfs_share:/app/storage \
-  -p 8080:80 \
+  -p 8080:8080 \
   --restart always \
   dambaya/rustycloud:latest
 
