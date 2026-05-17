@@ -29,19 +29,22 @@ jobs:
 
       - name: Start container for testing
         run: |
-          # Clean up any lingering test containers
+          # 1. Clean up old attempts
           docker rm -f test-app || true
 
-          # Use --network="host" so the container shares the runner's network
+          # 2. Run with host network AND verify the binary name
+          # We use 0.0.0.0 or the host IP to ensure it's not looping back to an empty container
           docker run -d --name test-app \
             --network="host" \
-            -e MONGODB_URI="mongodb://localhost:27017" \
-            -e REDIS_URI="redis://localhost:6379" \
+            -e MONGODB_URI="mongodb://127.0.0.1:27017" \
+            -e REDIS_URI="redis://127.0.0.1:6379" \
             -e NFS_MOUNT_POINT="./test_storage" \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
           
-          # Give the Rust server enough time to establish DB connections
+          # 3. Check if the container actually stayed alive
           sleep 10
+          docker ps
+          docker logs test-app
 
       - name: Run functional tests
         run: |
