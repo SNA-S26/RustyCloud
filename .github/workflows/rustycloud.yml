@@ -12,35 +12,48 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # New Step: Kill and remove ALL containers to ensure a clean state
+      # 1. CLEANUP: Wipe all containers to prevent port or naming conflicts
       - name: Stop and remove all existing containers
         run: |
           echo "Cleaning up all Docker containers on the runner..."
           docker stop $(docker ps -aq) || true
           docker rm -f $(docker ps -aq) || true
 
-      # Fix for unstable mongod: force restart services on the host
-      - name: Ensure Host Services are Running
+      # 2. DATABASE: Start MongoDB in a container to avoid host library Segmentation Faults
+      - name: Start Database Services
         run: |
-          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl restart mongod
-          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl restart redis
+          echo "Starting isolated MongoDB container..."
+          docker run -d --name mongodb-test \
+            -p 27017:27017 \
+            mongo:latest
+          
+          # Start Redis as well to ensure total independence from host services
+          docker run -d --name redis-test \
+            -p 6379:6379 \
+            redis:latest
+          
+          # Allow time for the database engines to initialize
+          sleep 10
 
+      # 3. AUTH: Login to Docker Hub
+      # Ensure you have run 'docker context use default' on your runner terminal
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # 4. BUILD: Create the image from the 'app' directory build context
       - name: Build and push Docker image
         run: |
-          # Build context is the 'app' directory as per Dockerfile 
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./app
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
 
-      - name: Start container for testing
+      # 5. TEST RUN: Start the app container
+      - name: Start RustyCloud container for testing
         run: |
-          # Run container using host network to access MongoDB/Redis on 127.0.0.1
-          # Pass '8080' as an argument to match test_routes.py
+          # Use --network="host" so the app can reach the Mongo/Redis containers via 127.0.0.1
+          # Pass '8080' to the binary to match the pytest configuration
           docker run -d --network="host" \
             --name rustycloud-test \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
@@ -49,41 +62,43 @@ jobs:
             -v /home/dbayazitov/Downloads/sna/project/RustyCloud:/app/storage \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./RustyCloud 8080
           
-          # Wait for the application to initialize database connections
+          # Wait for the Rust app to establish its connection pools
           sleep 10
 
+      # 6. VERIFICATION: Execute functional Python tests
       - name: Run functional tests
         run: |
-          # Ensure dependencies are present for the Python test script
           pip install requests pytest
-          # Execute tests against the server listening on port 8080
+          # This will target http://127.0.0.1:8080
           pytest tests/test_routes.py
 
+      # 7. DEBUG: Collect information if the run fails
       - name: Debug logs on failure
         if: failure()
         run: |
           echo "--- Application Logs ---"
-          docker logs rustycloud-test
-          echo "--- Database Status ---"
-          systemctl status mongod
+          docker logs rustycloud-test || true
+          echo "--- MongoDB Container Logs ---"
+          docker logs mongodb-test || true
 
-      - name: Stop testing container
+      # 8. POST-TEST CLEANUP: Remove test-specific containers
+      - name: Stop testing containers
         if: always() 
         run: |
-          docker stop rustycloud-test || true
-          docker rm rustycloud-test || true
+          docker stop rustycloud-test mongodb-test redis-test || true
+          docker rm rustycloud-test mongodb-test redis-test || true
 
   deploy:
     needs: build-and-test
     runs-on: self-hosted
     steps:
-      - name: Deploy to Server via SSH
+      - name: Deploy to Production Server
         run: |
           ssh root@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
             cd ~/RustyCloud
 
-            # Create .env with necessary production secrets
+            # Generate the environment file for the production environment
             cat > .env << EOL
             MONGODB_URI=${{ secrets.PROD_MONGODB_URI }}
             REDIS_URI=${{ secrets.PROD_REDIS_URI }}
@@ -91,6 +106,6 @@ jobs:
             EOL
 
             chmod 600 .env
-            # Execute deployment using port 8080 as defined in deploy.sh 
+            # deploy.sh uses port 8080 for production consistency
             ./deploy.sh
           EOF
