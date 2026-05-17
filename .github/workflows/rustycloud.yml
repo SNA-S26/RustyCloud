@@ -120,16 +120,18 @@ jobs:
 
       - name: Deploy to Production Server
         run: |
-          # 1. Copy the deploy script to the server
-          scp -o StrictHostKeyChecking=no ${{ github.workspace }}/deploy.sh root@${{ secrets.SERVER_IP }}:~/RustyCloud/deploy.sh
+          # 1. Create the directory on the server first
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_IP }} "mkdir -p ~/RustyCloud"
           
-          # 2. Run the deployment commands
+          # 2. Now copy the script into that existing directory
+          scp -o StrictHostKeyChecking=no ./deploy.sh root@${{ secrets.SERVER_IP }}:~/RustyCloud/deploy.sh
+          
+          # 3. Run the rest of the deployment
           ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
-            mkdir -p ~/RustyCloud
             cd ~/RustyCloud
             
-            # Create the env file from secrets
+            # Create the env file
             cat > .env << EOL
             MONGODB_URI=${{ secrets.PROD_MONGODB_URI }}
             REDIS_URI=${{ secrets.PROD_REDIS_URI }}
