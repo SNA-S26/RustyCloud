@@ -15,40 +15,40 @@ jobs:
       # 1. CLEANUP: Stop all containers
       - name: Stop and remove all existing containers
         run: |
-          echo "Cleaning up all Docker containers..."
           docker stop $(docker ps -aq) || true
           docker rm -f $(docker ps -aq) || true
-          # This specifically cleans up dangling network endpoints
           docker network prune -f
 
-      # 2. FORCE PORT LIBERATION: Kill anything on 27017 or 6379
+      # 2. FORCE PORT LIBERATION: Fixes "address already in use"
       - name: Stop Host Database Services
         run: |
           echo "Force-killing any process on database ports..."
-          sudo systemctl stop mongod || true
-          sudo systemctl stop redis || true
-          # Kill processes using these ports directly (requires psmisc package)
-          sudo fuser -k 27017/tcp || true
-          sudo fuser -k 6379/tcp || true
+          # Fix: Pipe the password into sudo -S
+          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl stop mongod || true
+          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S systemctl stop redis || true
+          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 27017/tcp || true
+          echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S fuser -k 6379/tcp || true
 
       # 3. DATABASE: Start isolated Docker containers
       - name: Start Database Services
         run: |
-          echo "Starting isolated MongoDB and Redis containers..."
-          # We use --rm so they clean themselves up if they fail
           docker run -d --name mongodb-test -p 27017:27017 mongo:latest
           docker run -d --name redis-test -p 6379:6379 redis:latest
-          
           sleep 10
 
-      # 4. AUTH: Login to Docker Hub
+      # 4. AUTH & PULL: Login and pre-pull base images to fix "access denied"
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      # 5. BUILD: Create image from 'app' directory
+      - name: Pre-pull base images
+        run: |
+          docker pull rustlang/rust:nightly-slim
+          docker pull debian:bookworm-slim
+
+      # 5. BUILD: Create and push the image
       - name: Build and push Docker image
         run: |
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./app
@@ -57,7 +57,6 @@ jobs:
       # 6. TEST RUN: Start the app container
       - name: Start RustyCloud container for testing
         run: |
-          # Use --network="host" to reach Mongo/Redis containers on 127.0.0.1
           docker run -d --network="host" \
             --name rustycloud-test \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
@@ -65,7 +64,6 @@ jobs:
             -e NFS_MOUNT_POINT="/app/storage" \
             -v /home/dbayazitov/Downloads/sna/project/RustyCloud:/app/storage \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./RustyCloud 8080
-          
           sleep 10
 
       # 7. VERIFICATION: Execute functional Python tests
@@ -74,16 +72,14 @@ jobs:
           pip install requests pytest
           pytest tests/test_routes.py
 
-      # 8. DEBUG: Collect information if the run fails
+      # 8. DEBUG: Collect logs on failure
       - name: Debug logs on failure
         if: failure()
         run: |
-          echo "--- Application Logs ---"
           docker logs rustycloud-test || true
-          echo "--- MongoDB Container Logs ---"
           docker logs mongodb-test || true
 
-      # 9. POST-TEST CLEANUP: Remove test containers
+      # 9. POST-TEST CLEANUP
       - name: Stop testing containers
         if: always() 
         run: |
