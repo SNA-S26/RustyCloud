@@ -57,10 +57,9 @@ jobs:
       # 6. TEST RUN: Start the app container
       - name: Start RustyCloud container for testing
         run: |
-          # Map host 8080 to container 80 because test_routes.py looks for 8080
           docker run -d \
             --name rustycloud-test \
-            -p 8080:80 \
+            --network host \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
             -e REDIS_URI="redis://127.0.0.1:6379" \
             -e NFS_MOUNT_POINT="/app/storage" \
