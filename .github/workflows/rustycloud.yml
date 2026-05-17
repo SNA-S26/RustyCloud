@@ -89,7 +89,7 @@ jobs:
         run: |
           docker logs rustycloud-test
           # Checking internal paths based on your Dockerfile/Tree
-          docker exec rustycloud-test ls -R /app || echo "App directory issue!"
+          docker exec rustycloud-test ls -R /app || echo "App directory issue"
 
       # 10. POST-TEST CLEANUP
       - name: Stop testing containers
