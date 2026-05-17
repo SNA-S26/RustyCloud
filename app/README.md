@@ -22,5 +22,5 @@
     -e MONGODB_URI=<mongo uri> \
     -e REDIS_URI=<redis uri> \
     -e NFS_MOUNT_POINT=<dir> \
-    -p <port>:80 -d rustycloud
+    -p <port>:8080 -d rustycloud
     ```

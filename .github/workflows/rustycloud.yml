@@ -24,23 +24,23 @@ jobs:
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./app
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
 
-      - name: Start container for testing
+      - name: Start container
         run: |
           docker rm -f test-app || true
+          # Create storage with absolute path
+          mkdir -p /home/dbayazitov/test_storage
+          chmod 777 /home/dbayazitov/test_storage
           
-          # 1. Create the storage directory and give it full permissions
-          mkdir -p ${{ github.workspace }}/test_storage
-          chmod 777 ${{ github.workspace }}/test_storage
-
-          # 2. Run the container with an ABSOLUTE path
           docker run -d --name test-app \
             --network="host" \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
             -e REDIS_URI="redis://127.0.0.1:6379" \
-            -e NFS_MOUNT_POINT="${{ github.workspace }}/test_storage" \
+            -e NFS_MOUNT_POINT="/home/dbayazitov/test_storage" \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
           
+          echo "Waiting for startup..."
           sleep 10
+          docker logs test-app
       
       - name: Check App Logs
         if: always()
