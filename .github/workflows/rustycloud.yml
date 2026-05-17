@@ -22,16 +22,17 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          # Build image from the /app directory and tag it
+          # Pointing to ./app where your Dockerfile lives
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./app
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
 
       - name: Start container for testing
         run: |
-          # Ensure a clean environment by removing existing test containers
+          # 1. KILL anything currently holding port 8080
+          sudo fuser -k 8080/tcp || true
           docker rm -f test-app || true
 
-          # Use host networking so the container can access MongoDB/Redis on the runner's localhost
+          # 2. Start the container
           docker run -d --name test-app \
             --network="host" \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
@@ -39,17 +40,19 @@ jobs:
             -e NFS_MOUNT_POINT="./test_storage" \
             ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
           
-          # Wait for the application to initialize database connections
-          sleep 10
+          # 3. Give it time to attempt DB connections
+          sleep 15
           
-          # Debugging: check if the container is running and print logs for verification
-          docker ps
+          # 4. CRITICAL: Show logs if it failed
           docker logs test-app
+          
+          # 5. Verify the port is actually open
+          sudo ss -tulpn | grep 8080
 
       - name: Run functional tests
         run: |
-          # Install dependencies and execute the test suite
           pip install requests pytest
+          # Use the full path to the test file
           pytest tests/test_routes.py
 
       - name: Stop testing container
