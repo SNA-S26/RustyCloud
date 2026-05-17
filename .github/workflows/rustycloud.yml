@@ -27,18 +27,21 @@ jobs:
       - name: Start container
         run: |
           docker rm -f test-app || true
+          # Kill anything already on 8080 just in case
+          sudo fuser -k 8080/tcp || true 
+          
           mkdir -p /home/dbayazitov/test_storage
           chmod 777 /home/dbayazitov/test_storage
-
+          
           docker run -d --name test-app \
             --network="host" \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
             -e REDIS_URI="redis://127.0.0.1:6379" \
             -e NFS_MOUNT_POINT="/home/dbayazitov/test_storage" \
-            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
-
-          echo "Waiting for startup..."
-          sleep 10
+            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest \
+            /usr/local/bin/RustyCloud 8080 # Force the binary to use 8080
+          
+          sleep 15 # Give it a bit more time to bind to the port
 
       - name: Verify Application Health
         if: always()
