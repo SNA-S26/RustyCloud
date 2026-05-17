@@ -121,10 +121,10 @@ jobs:
       - name: Deploy to Production Server
         run: |
           # 1. Copy the deploy script to the server
-          scp ./deploy.sh root@${{ secrets.SERVER_IP }}:~/RustyCloud/deploy.sh
+          scp -o StrictHostKeyChecking=no ${{ github.workspace }}/deploy.sh root@${{ secrets.SERVER_IP }}:~/RustyCloud/deploy.sh
           
           # 2. Run the deployment commands
-          ssh root@${{ secrets.SERVER_IP }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
             mkdir -p ~/RustyCloud
             cd ~/RustyCloud
