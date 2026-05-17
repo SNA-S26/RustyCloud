@@ -1,0 +1,46 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "CI/CD-Reliability" ] 
+
+jobs:
+  build-and-test:
+    runs-on: self-hosted 
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest .
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
+
+      # Run the container locally on the runner to test it
+      - name: Start container for testing
+        run: |
+          docker run -d --name test-app -p 8080:8080 \
+            -e MONGODB_URI="mongodb://localhost:27017" \
+            -e REDIS_URI="redis://localhost:6379" \
+            -e NFS_MOUNT_POINT="./test_storage" \
+            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest
+          sleep 5 # Wait for app to start
+
+      - name: Run functional tests
+        run: |
+          pip install requests pytest
+          pytest test_routes.py # Ensure the path to the file is correct
+
+      # Cleanup testing container
+      - name: Stop testing container
+        if: always() # Run even if tests fail
+        run: |
+          docker stop test-app || true
+          docker rm test-app || true
