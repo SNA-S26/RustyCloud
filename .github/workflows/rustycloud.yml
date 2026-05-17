@@ -57,25 +57,23 @@ jobs:
       # 6. TEST RUN: Start the app container
       - name: Start RustyCloud container for testing
         run: |
+          # Map host 8080 to container 80 because test_routes.py looks for 8080
           docker run -d \
             --name rustycloud-test \
-            --network="host" \
+            -p 8080:80 \
             -e MONGODB_URI="mongodb://127.0.0.1:27017" \
             -e REDIS_URI="redis://127.0.0.1:6379" \
             -e NFS_MOUNT_POINT="/app/storage" \
-            # Added :Z for SELinux and ensured we mount to the correct internal path
             -v /home/dbayazitov/Downloads/sna/project/RustyCloud:/app/storage:Z \
-            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest \
-            # Explicitly run the binary from /app to match the WORKDIR
-            /app/RustyCloud 8080
+            ${{ secrets.DOCKERHUB_USERNAME }}/rustycloud:latest ./RustyCloud 80
           
-          echo "Waiting for RustyCloud to respond on 8080..."
-          # The logs show it took 10 attempts to fail last time; let's verify readiness
+          echo "Waiting for RustyCloud to respond on 8080 (mapped to container 80)..."
           for i in {1..15}; do
             if curl -s http://127.0.0.1:8080/signup > /dev/null; then
-              echo "Signup route is reachable!"
+              echo "Server is responding!"
               break
             fi
+            echo "Waiting... ($i/15)"
             sleep 2
           done
 
