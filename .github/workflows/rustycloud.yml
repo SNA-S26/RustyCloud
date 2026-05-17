@@ -115,18 +115,28 @@ jobs:
     needs: build-and-test
     runs-on: self-hosted
     steps:
-      - name: Deploy to Production Server
+      - name: Checkout repository
+        uses: actions/checkout@v4 # Need this to access deploy.sh
+
+      - name: Copy script and deploy
         run: |
+          # 1. Copy the deploy script to the server
+          scp root@${{ secrets.SERVER_IP }}:~/RustyCloud/deploy.sh ./deploy.sh
+          
+          # 2. Run the remote commands
           ssh root@${{ secrets.SERVER_IP }} << 'EOF'
             set -euo pipefail
             mkdir -p ~/RustyCloud
             cd ~/RustyCloud
+            
+            # Create the env file
             cat > .env << EOL
             MONGODB_URI=${{ secrets.PROD_MONGODB_URI }}
             REDIS_URI=${{ secrets.PROD_REDIS_URI }}
             NFS_MOUNT_POINT="/app/storage"
             EOL
+            
             chmod 600 .env
-            # deploy.sh is in the project root, so ensure it's on the server
+            chmod +x deploy.sh
             ./deploy.sh
           EOF
