@@ -1,0 +1,65 @@
+name: Testing and Deploy
+
+on:
+  push:
+    branches: ["main", "ci-cd-pipeline"]
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+      - name: Build RustyCloud image
+        run: |
+          docker build --tag semyonnadutkin/rustycloud:latest app/
+
+  run-containers:
+    needs: build
+    runs-on: self-hosted
+
+    steps:
+      - name: Create Docker network
+        run: |
+          docker network rm --force rustycloud-network
+          docker network create rustycloud-network
+
+      - name: Run Mongo and Redis
+        run: |
+          docker run -d --name mongo -p 27017:27017 --network rustycloud-network mongo:latest
+          docker run -d --name redis -p 6379:6379 --network rustycloud-network redis:latest
+
+      - name: Create persistent storage
+        run: |
+          rm -rf rustycloud-storage
+          mkdir -p rustycloud-storage
+
+      - name: Run RustyCloud
+        run: |
+          docker run --name rustycloud --network rustycloud-network \
+          -e MONGODB_URI=mongodb://mongo:27017 \
+          -e REDIS_URI=redis://redis:6379 \
+          -e NFS_MOUNT_POINT=rustycloud-storage \
+          -p 8080:80 -d semyonnadutkin/rustycloud:latest
+  
+  run-tests:
+    needs: run-containers
+    runs-on: self-hosted
+
+    steps:
+      - name: Run tests
+        run: |
+          pytest -v
+
+  cleanup:
+    needs: run-tests
+    if: always()
+    runs-on: self-hosted
+
+    steps:
+      - name: Remove containers and network
+        run: |
+          docker rm --force mongo
+          docker rm --force redis
+          docker rm --force rustycloud
+          docker network rm --force rustycloud-network 
+
