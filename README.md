@@ -1,4 +1,4 @@
-## I. Goal / Tasks of the Project
+## I. Goals of the Project
 
 ### Project Goal
 
@@ -10,27 +10,16 @@ The project focuses on:
 * horizontal scalability using Kubernetes
 * centralized persistent file storage
 * infrastructure observability and metrics collection
-* automated testing and deployment pipeline
+* automated and secure testing and deployment pipeline
 
 ### Team Responsibilities
 
 * **Semen Nadutkin** — RustyCloud backend application, Docker containerization, server configuration
 * **Magomedgadzhi Ibragimov** — MongoDB, Redis, Prometheus configuration and Kubernetes manifests
-* **Stefan Farafonov** — project infrastructure design and documentation
+* **Stefan Farafonov** — project infrastructure design and documentation, application backend and routing Kubernetes configuration
 * **Damir Bayazitov** — local GitHub runner deployment, CI/CD pipeline
 
-## II. Execution Plan / Methodology
-
-### Solution Plan
-
-The project implementation was divided into several stages:
-
-1. Develop the RustyCloud backend application in Rust
-2. Containerize the application using Docker
-3. Deploy the infrastructure using Kubernetes (`k3s`)
-4. Configure distributed services and persistent storage
-5. Configure monitoring and metrics collection
-6. Implement automated testing and deployment pipeline
+## II. Methodology
 
 ### Infrastructure Overview
 
@@ -52,7 +41,7 @@ The project implementation was divided into several stages:
 
 The infrastructure consists of several interconnected Kubernetes components:
 
-* `NGINX` ingress controller accepts external HTTP/HTTPS requests
+* `NGINX` ingress controller accepts external HTTPS requests
 * RustyCloud application pods process client requests
 * MongoDB stores persistent user credentials and file metadata
 * Redis provides in-memory caching for fast data access
