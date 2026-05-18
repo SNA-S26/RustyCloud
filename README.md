@@ -16,8 +16,8 @@ The project focuses on:
 
 * **Semen Nadutkin** — RustyCloud backend application, HTTP server implementation, Docker containerization, server configuration
 * **Magomedgadzhi Ibragimov** — MongoDB, Redis, Prometheus configuration and Kubernetes manifests
-* **Stefan Farafonov** — Kubernetes infrastructure configuration, Docker optimizations, SSL configuration using `certbot`
-* **Damir Bayazitov** — local GitHub runner deployment, automated testing, CI/CD pipeline
+* **Stefan Farafonov** — Kubernetes infrastructure configuration, Docker optimizations, SSL configuration using `certbot`, resource limits and health probe configuration
+* **Damir Bayazitov** — local GitHub runner deployment, automated testing, CI/CD pipeline, automated deployment orchestration via Kubernetes
 
 ## II. Execution Plan / Methodology
 
@@ -44,6 +44,8 @@ The project implementation was divided into several stages:
 * **Monitoring:** Prometheus, Grafana
 * **Persistent File Storage:** NFS
 * **Deployment Management:** Kustomize
+* **СI/CD:** GitHub Actions, Self-hosted Runner
+* **Testing:** Pytest
 
 ### Infrastructure Design
 
@@ -68,6 +70,7 @@ Persistent components use `PersistentVolume` and `PersistentVolumeClaim` resourc
 3. RustyCloud instances authenticate users and process file operations.
 4. Metadata is stored in MongoDB and Redis.
 5. Uploaded files are stored on the centralized NFS volume.
+
 
 See **Figure 1: Project architecture diagram** for details.
 
@@ -115,6 +118,46 @@ See **Figure 2: Web client FSM** for details.
 
 ![alt text](docs/web-client-fsm.svg)
 **Figure 2: Web client FSM**
+
+### CI/CD Pipeline 
+
+A fully automated CI/CD pipeline was implemented using GitHub Actions and a self-hosted runner.
+
+#### Self-hosted Runner Setup:
+
+* A local Ubuntu machine was configured as a GitHub Actions runner.
+* The runner was registered with the repository and configured to execute pipeline jobs.
+* Necessary dependencies (Docker, Python, pytest) were pre-installed on the runner machine.
+
+#### CI/CD Pipeline Stages:
+
+1. Build — Docker image of the RustyCloud application is built and pushed to Docker Hub.
+2. Test — The container is started in a test environment with MongoDB and Redis dependencies. Functional tests written in pytest are executed against the running application.
+3. Deploy — Upon successful tests, the application is automatically deployed to the production server via SSH using the `deploy.sh` script.
+
+#### Deployment Automation:
+
+* The `deploy.sh` script pulls the latest Docker image, stops the old container, and starts a new one with the proper environment configuration.
+* The pipeline uses GitHub Secrets to securely store sensitive information (Docker Hub credentials, server IP, database credentials).
+
+### Containerization and NGINX Ingress
+
+#### Docker Optimizations:
+
+* A multi-stage Dockerfile was implemented to minimize the final image size.
+* The build stage compiles the Rust application, while the runtime stage only includes the compiled binary and necessary dependencies.
+* Alpine Linux was used as the base image to reduce attack surface and improve performance.
+
+#### Kubernetes Manifests:
+* Kubernetes `Deployment` and `Service` resources were created to manage the RustyCloud application pods.
+* `PersistentVolume` and `PersistentVolumeClaim` were configured for NFS-backed shared storage.
+* Kubernetes `Secrets` were used to inject environment variables (database credentials, NFS server address) securely.
+
+#### NGINX Ingress Configuration:
+
+* NGINX Ingress Controller was deployed to handle external HTTP/HTTPS traffic.
+* Ingress rules were defined to route requests from rustycloud.ru to the RustyCloud service.
+* SSL/TLS certificates were obtained and automatically renewed using certbot to enable HTTPS encryption.
 
 ### Kubernetes Infrastructure
 
@@ -199,6 +242,17 @@ Implemented testing areas:
 * file upload and retrieval testing
 * CI/CD pipeline integration
 
+#### Functional Testing:
+
+* A comprehensive test suite was written using Python's pytest and requests libraries.
+* The tests verify all critical HTTP endpoints including:
+    * User registration (`/signup`) and login (`/login`)
+    * Dashboard access (`/dashboard`)
+    * File upload (`/upload-file`), download (`/file`), and deletion (`/delete-file`)
+    * Authentication and session handling
+    * Logout functionality
+* Each test validates HTTP status codes, redirect behavior, and response content.
+
 Deployment automation includes:
 
 * local GitHub runner
@@ -247,12 +301,18 @@ The implemented system successfully provides:
 * automated deployment pipeline
 * infrastructure monitoring and visualization
 * persistent storage for stateful services
+* automated testing with CI/CD integration using GitHub Actions and self-hosted runner
+* secure HTTPS traffic handling with NGINX Ingress and SSL termination
+* functional test suite covering authentication and file operations
 
 The current implementation also has several limitations:
 
 * limited monitoring automation
 * violation of RESTful API
 * lack of automated backup mechanisms
+* no load balancing between multiple application replicas
+* limited database replication and failover capabilities
+* CI/CD pipeline relies on a single self-hosted runner without high availability
 
 Despite these limitations, the project successfully demonstrates the practical implementation of a cloud-native distributed application using modern infrastructure technologies.
 
