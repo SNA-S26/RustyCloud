@@ -307,7 +307,7 @@ Future improvements and development vectors:
 * higher availability of Fedora and RHEL pipeline runners
 * advanced k8s configuration: higher security and perfomance control
 * advanced microservices secrets managment
-* real SSL-certificate
+* advanced transport layer security
 * Infrastructure as Code implementationlk,
 * GitOps workflow implementation
 
