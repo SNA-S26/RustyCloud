@@ -65,3 +65,30 @@ jobs:
           docker rm --force redis
           docker rm --force rustycloud
           docker network rm --force rustycloud-network
+
+  deploy:
+    needs: run-tests
+    runs-on: [self-hosted, rhel]
+
+    steps:
+      - name: Publish image to Dockerhub
+        run: |
+          docker push semyonnadutkin/rustycloud:latest
+      
+      - name: Deploy the application
+        run: |
+          ssh root@rustycloud.ru << 'EOF'
+            set -euo pipefail
+            rm -rf ~/RustyCloud && git clone https://github.com/SNA-S26/RustyCloud.git
+            cd RustyCloud && git checkout ci-cd-pipeline
+
+            cat > .env << EOL
+            MONGODB_USER=${{ secrets.MONGODB_USER }}
+            MONGODB_PASS=${{ secrets.MONGODB_PASS }}
+            NFS_SERVER=${{ secrets.NFS_SERVER }}
+            NFS_MOUNT_POINT=${{ secrets.NFS_MOUNT_POINT }}
+            EOL
+
+            chmod 700 .env deploy.sh
+            ./deploy.sh
+          EOF
