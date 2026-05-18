@@ -115,7 +115,7 @@ A fully automated CI/CD pipeline was implemented using GitHub Actions and a self
 
 #### Self-hosted Runner Setup:
 
-* A local Fedora machine was configured as a GitHub Actions runner.
+* A local Fedora virtual machine was configured as a GitHub Actions runner.
 * The runner was registered with the repository and configured to execute pipeline jobs.
 * Necessary dependencies (Docker, Python, pytest) were pre-installed on the runner machine.
 
@@ -147,7 +147,7 @@ A fully automated CI/CD pipeline was implemented using GitHub Actions and a self
 
 * NGINX Ingress Controller was deployed to handle external HTTP/HTTPS traffic, replaced default k3s ingress (Traefik)
 * Ingress rules were defined to route requests from rustycloud.ru to the RustyCloud service.
-* SSL/TLS certificates were obtained and automatically renewed using certbot to enable HTTPS encryption.
+* SSL/TLS certificates were self-signed by NGINX enable HTTPS encryption.
 
 ### Kubernetes Infrastructure
 
@@ -219,7 +219,7 @@ Deployment configuration includes:
 * ConfigMaps and Secrets
 * PersistentVolumeClaims
 * NGINX ingress configuration
-* SSL termination using `certbot`
+* SSL termination using `self-signed certificate`
 
 ### Testing and Proof of Concept
 
@@ -283,7 +283,7 @@ The project provided practical experience with:
 
 The project demonstrates a functional distributed file storage platform deployed on Kubernetes infrastructure.
 
-The implemented system successfully provides:
+The implemented system successfully deployed on cloud service and provides:
 
 * scalable backend deployment
 * centralized persistent file storage
@@ -295,15 +295,21 @@ The implemented system successfully provides:
 * secure HTTPS traffic handling with NGINX Ingress and SSL termination
 * functional test suite covering authentication and file operations
 
-The current implementation also has several limitations:
+Future improvements and development vectors:
 
-* limited monitoring automation
-* violation of RESTful API
-* lack of automated backup mechanisms
-* too small server for replicas
-* CI/CD pipeline relies on Fedora and RHEL runners without high availability
-
-Despite these limitations, the project successfully demonstrates the practical implementation of a cloud-native distributed application using modern infrastructure technologies.
+* WebDAV support
+* application-layer cryptographic security
+  
+* monitoring automation
+* looking towards RESTful API
+* automated backup mechanisms
+* production-scale 
+* higher availability of Fedora and RHEL pipeline runners
+* advanced k8s configuration: higher security and perfomance control
+* advanced microservices secrets managment
+* real SSL-certificate
+* Infrastructure as Code implementationlk,
+* GitOps workflow implementation
 
 ## Links
 
