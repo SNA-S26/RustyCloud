@@ -16,7 +16,7 @@ The project focuses on:
 
 * **Semen Nadutkin** — RustyCloud backend application, Docker containerization, server configuration
 * **Magomedgadzhi Ibragimov** — MongoDB, Redis, Prometheus configuration and Kubernetes manifests
-* **Stefan Farafonov** — project infrastructure design and documentation, application backend and routing Kubernetes configuration
+* **Stefan Farafonov** — project infrastructure design and documentation, Kubernetes routing configuration
 * **Damir Bayazitov** — local GitHub runner deployment, CI/CD pipeline
 
 ## II. Methodology
@@ -29,12 +29,11 @@ The project focuses on:
 * **Containerization:** Docker
 * **Orchestration:** Kubernetes (`k3s`)
 * **Ingress Controller:** NGINX
-* **Database:** MongoDB
-* **Caching:** Redis
+* **Database:** MongoDB, Redis
 * **Monitoring:** Prometheus, Grafana
 * **Persistent File Storage:** NFS
 * **Deployment Management:** Kustomize
-* **СI/CD:** GitHub Actions, Self-hosted Runner
+* **CI/CD:** GitHub Actions, Self-hosted Runner
 * **Testing:** Pytest
 
 ### Infrastructure Design
@@ -55,10 +54,10 @@ Persistent components use `PersistentVolume` and `PersistentVolumeClaim` resourc
 
 ### Request Flow
 
-1. Web clients send requests to the RustyCloud domain.
+1. Web clients send requests to [rustycloud.ru](https://rustycloud.ru).
 2. NGINX ingress accepts HTTPS traffic and distributes requests between RustyCloud instances.
 3. RustyCloud instances authenticate users and process file operations.
-4. Metadata is stored in MongoDB and Redis.
+4. Metadata is stored in MongoDB and cached in Redis.
 5. Uploaded files are stored on the centralized NFS volume.
 
 
@@ -78,8 +77,7 @@ The RustyCloud backend application was implemented in Rust using the `axum` fram
 The application provides:
 
 * user authentication and registration
-* file upload and download
-* file deletion
+* file upload, download, and deletion
 * session handling using cookies
 * HTML template rendering
 
@@ -121,14 +119,16 @@ A fully automated CI/CD pipeline was implemented using GitHub Actions and a self
 
 #### CI/CD Pipeline Stages:
 
-1. Build — Docker image of the RustyCloud application is built and pushed to Docker Hub.
-2. Test — The container is started in a test environment with MongoDB and Redis dependencies. Functional tests written in pytest are executed against the running application.
-3. Deploy — Upon successful tests, the application is automatically deployed to the production server via SSH using the `deploy.sh` script.
+1. **Build** — Docker image of the RustyCloud application is built.
+2. **Run** — Virtual Docker network is created, RustyCloud, MongoDB, and Redis containers are started.
+3. **Test** — Functional tests are executed against the running application (implemented using the `pytest` framework).
+4. **Deploy** — Upon successful tests, the application is automatically deployed to the remote VPS via SSH using the `deploy.sh` script and GitHub Secrets.
+5. **Cleanup** — The virtual Docker network and containers are removed from the system.
 
 #### Deployment Automation:
 
-* The `deploy.sh` script pulls the latest Docker image, applies a new configuration to all Kubernetes pods, performs rolling update for the application by using the new Dockerfile
-* The pipeline uses GitHub Secrets to securely store sensitive information (Docker Hub credentials, server IP, database credentials).
+* The `deploy.sh` script pulls the latest Docker image, applies a new configuration to all Kubernetes pods, performs a rolling update using the new Docker image.
+* The pipeline uses GitHub Secrets to securely store sensitive information (database credentials, server IP, NFS path).
 
 ### Containerization and NGINX Ingress
 
@@ -136,7 +136,7 @@ A fully automated CI/CD pipeline was implemented using GitHub Actions and a self
 
 * A multi-stage Dockerfile was implemented to minimize the final image size.
 * The build stage compiles the Rust application, while the runtime stage only includes the compiled binary and necessary dependencies.
-* Debian:13-slim Linux was used as the base image to reduce attack surface and improve performance.
+* `debian:13-slim` image was used as the base image to reduce the resulting container image size (~20MiB).
 
 #### Kubernetes Manifests:
 * Kubernetes `Deployment` and `Service` resources were created to manage the RustyCloud application pods.
@@ -145,9 +145,9 @@ A fully automated CI/CD pipeline was implemented using GitHub Actions and a self
 
 #### NGINX Ingress Configuration:
 
-* NGINX Ingress Controller was deployed to handle external HTTP/HTTPS traffic, replaced default k3s ingress (Traefik)
-* Ingress rules were defined to route requests from rustycloud.ru to the RustyCloud service.
-* SSL/TLS certificates were self-signed by NGINX enable HTTPS encryption.
+* NGINX Ingress Controller was deployed to handle external HTTP/HTTPS traffic _(replaced default k3s Ingress Controller — `Traefik`)_.
+* Ingress rules were defined to route requests from [rustycloud.ru](https://rustycloud.ru) to the RustyCloud service.
+* SSL/TLS certificates are used to enable HTTPS encryption _(self-signed)_.
 
 ### Kubernetes Infrastructure
 
@@ -163,7 +163,7 @@ Implemented configuration includes:
 * internal `ClusterIP` service for pod communication
 * `NGINX` ingress routing for external access
 * NFS-backed shared persistent storage with `ReadWriteMany`
-* environment variable injection using Kubernetes Secrets
+* environment variable injection using Kubernetes Secrets and `envsubst` utility
 * shared volume mounting into application containers
 
 This configuration allows application replicas to share centralized file storage and communicate through Kubernetes networking primitives.
@@ -201,25 +201,13 @@ Used for metrics collection and monitoring.
 
 #### Grafana
 
-Used for metrics visualization.
+Used for metrics visualization and dashboard management.
 
 * persistent dashboard storage
 * automatic datasource provisioning
 * predefined dashboards loaded via ConfigMap
 
 **Limitations:** no external authentication, single instance deployment
-
-### Containerization and Deployment
-
-The RustyCloud application was containerized using Docker multi-stage builds.
-
-Deployment configuration includes:
-
-* Kubernetes Deployments and StatefulSets
-* ConfigMaps and Secrets
-* PersistentVolumeClaims
-* NGINX ingress configuration
-* SSL termination using `self-signed certificate`
 
 ### Testing and Proof of Concept
 
@@ -230,11 +218,10 @@ Implemented testing areas:
 * HTTP endpoint testing
 * authentication flow validation
 * file upload and retrieval testing
-* CI/CD pipeline integration
 
 #### Functional Testing:
 
-* A comprehensive test suite was written using Python's pytest and requests libraries.
+* A comprehensive test suite was written using `pytest` and `requests` Python modules.
 * The tests verify all critical HTTP endpoints including:
     * User registration (`/signup`) and login (`/login`)
     * Dashboard access (`/dashboard`)
@@ -245,8 +232,8 @@ Implemented testing areas:
 
 Deployment automation includes:
 
-* local GitHub runner
-* automated build and deployment scripts
+* image build and push
+* deployment script
 * Kubernetes rollout deployment process
 
 The infrastructure and application were successfully deployed and tested in a working `k3s` environment.
@@ -283,36 +270,31 @@ The project provided practical experience with:
 
 The project demonstrates a functional distributed file storage platform deployed on Kubernetes infrastructure.
 
-The implemented system successfully deployed on cloud service and provides:
+The implemented system was successfully deployed on a remote VPS and provides:
 
 * scalable backend deployment
 * centralized persistent file storage
 * Kubernetes-based orchestration
-* automated deployment pipeline
 * infrastructure monitoring and visualization
 * persistent storage for stateful services
-* automated testing with CI/CD integration using GitHub Actions and self-hosted runner
-* secure HTTPS traffic handling with NGINX Ingress and SSL termination
+* automated testing and deployment with CI/CD integration using GitHub Actions and self-hosted runner
+* secure HTTPS traffic handling with NGINX and SSL termination
 * functional test suite covering authentication and file operations
 
 Future improvements and development vectors:
 
 * WebDAV support
-* application-layer cryptographic security
   
-* monitoring automation
-* looking towards RESTful API
+* manual testing before release
+* REST API support
 * automated backup mechanisms
-* production-scale 
-* higher availability of Fedora and RHEL pipeline runners
-* advanced k8s configuration: higher security and perfomance control
-* advanced microservices secrets managment
-* advanced transport layer security
-* Infrastructure as Code implementationlk,
-* GitOps workflow implementation
+* improved availability of self-hosted GitHub runners
+* advanced microservices secrets management _(e.g. AWS Secrets Manager)_
 
 ## Links
 
 * Repository: [RustyCloud](https://github.com/SNA-S26/RustyCloud)
+* Demonstration: [demo.mp4](https://drive.google.com/file/d/1gz651DXydvx_35uXVcJP09Z2Y1-Dr4UT/view?usp=sharing)
 * Deployed application: [rustycloud.ru](https://rustycloud.ru)
+* Dockerfile: [Dockerfile](https://github.com/SNA-S26/RustyCloud/blob/main/app/Dockerfile)
 * Kubernetes manifests: [infrastructure](https://github.com/SNA-S26/RustyCloud/tree/main/infra)
