@@ -14,10 +14,10 @@ The project focuses on:
 
 ### Team Responsibilities
 
-* **Semen Nadutkin** — RustyCloud backend application, HTTP server implementation, Docker containerization, server configuration
+* **Semen Nadutkin** — RustyCloud backend application, Docker containerization, server configuration
 * **Magomedgadzhi Ibragimov** — MongoDB, Redis, Prometheus configuration and Kubernetes manifests
-* **Stefan Farafonov** — Kubernetes infrastructure configuration, Docker optimizations, SSL configuration using `certbot`, resource limits and health probe configuration
-* **Damir Bayazitov** — local GitHub runner deployment, automated testing, CI/CD pipeline, automated deployment orchestration via Kubernetes
+* **Stefan Farafonov** — Kubernetes infrastructure configuration
+* **Damir Bayazitov** — local GitHub runner deployment, CI/CD pipeline
 
 ## II. Execution Plan / Methodology
 
