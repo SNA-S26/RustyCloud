@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: [self-hosted, rhel]
 
     steps:
       - name: Build RustyCloud image
@@ -15,7 +15,7 @@ jobs:
 
   run-containers:
     needs: build
-    runs-on: self-hosted
+    runs-on: [self-hosted, rhel]
 
     steps:
       - name: Create Docker network
@@ -43,7 +43,7 @@ jobs:
   
   run-tests:
     needs: run-containers
-    runs-on: self-hosted
+    runs-on: [self-hosted, rhel]
 
     steps:
       - name: Run tests
@@ -53,7 +53,7 @@ jobs:
   cleanup:
     needs: run-tests
     if: always()
-    runs-on: self-hosted
+    runs-on: [self-hosted, rhel]
 
     steps:
       - name: Remove containers and network
@@ -61,5 +61,4 @@ jobs:
           docker rm --force mongo
           docker rm --force redis
           docker rm --force rustycloud
-          docker network rm --force rustycloud-network 
-
+          docker network rm --force rustycloud-network
