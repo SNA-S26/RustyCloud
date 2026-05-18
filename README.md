@@ -6,7 +6,7 @@ The goal of the project is to develop and deploy a lightweight distributed file 
 
 The project focuses on:
 
-* secure user authentication and file management
+* simple user authentication and file management
 * horizontal scalability using Kubernetes
 * centralized persistent file storage
 * infrastructure observability and metrics collection
@@ -16,7 +16,7 @@ The project focuses on:
 
 * **Semen Nadutkin** — RustyCloud backend application, Docker containerization, server configuration
 * **Magomedgadzhi Ibragimov** — MongoDB, Redis, Prometheus configuration and Kubernetes manifests
-* **Stefan Farafonov** — Kubernetes infrastructure configuration
+* **Stefan Farafonov** — project infrastructure design and documentation
 * **Damir Bayazitov** — local GitHub runner deployment, CI/CD pipeline
 
 ## II. Execution Plan / Methodology
@@ -40,7 +40,8 @@ The project implementation was divided into several stages:
 * **Containerization:** Docker
 * **Orchestration:** Kubernetes (`k3s`)
 * **Ingress Controller:** NGINX
-* **Databases:** MongoDB, Redis
+* **Database:** MongoDB
+* **Caching:** Redis
 * **Monitoring:** Prometheus, Grafana
 * **Persistent File Storage:** NFS
 * **Deployment Management:** Kustomize
